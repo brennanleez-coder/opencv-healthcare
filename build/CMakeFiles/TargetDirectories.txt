@@ -1,0 +1,5 @@
+/Users/brennanlee/Desktop/MediaPipePoseEstimation/build/CMakeFiles/main.dir
+/Users/brennanlee/Desktop/MediaPipePoseEstimation/build/CMakeFiles/edit_cache.dir
+/Users/brennanlee/Desktop/MediaPipePoseEstimation/build/CMakeFiles/rebuild_cache.dir
+/Users/brennanlee/Desktop/MediaPipePoseEstimation/build/external/pybind11/CMakeFiles/edit_cache.dir
+/Users/brennanlee/Desktop/MediaPipePoseEstimation/build/external/pybind11/CMakeFiles/rebuild_cache.dir
