@@ -1,7 +1,7 @@
 1. startup venv
 
     ```
-    cd ./venv
+    cd ./myenv
     source bin/activate
     ```
 
@@ -25,3 +25,6 @@ jupyter nbconvert --to script example_notebook.ipynb
 
 Next steps:
 1. do up the algorithm for sit to stand
+
+videos:
+[text](https://drive.google.com/drive/folders/1508TJTl65lPUibJI231O73kkHrnH0uiE?usp=sharing)
