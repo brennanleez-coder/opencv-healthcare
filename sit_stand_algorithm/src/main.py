@@ -12,7 +12,7 @@ def main():
     confirm_frames = 5
     stage_counter = 0
 
-    pe = PoseEstimation("../test/30CST.mp4")
+    pe = PoseEstimation("../test/CST_self1.mp4")
     
     
     while True:

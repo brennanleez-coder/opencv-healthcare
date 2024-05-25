@@ -24,7 +24,7 @@ int main()
         cout << "Project root directory: " << project_root << endl;
 
         // Path to the virtual environment, now relative to the project root
-        string venv_path = project_root + "/.venv";
+        string venv_path = project_root + "/myvenv";
         string site_packages_path = venv_path + "/lib/python3.11/site-packages";
         cout << "Site packages path: " << site_packages_path << endl;
 
