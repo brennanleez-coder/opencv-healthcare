@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.10)
 
-project(TestPythonCppLinkage)
+project(OpenCvHealthcare)
 
 include_directories(src/include)
 file(GLOB SOURCES "src/*.cpp" "src/lib/**/*.cpp")
