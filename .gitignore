@@ -5,3 +5,5 @@ __pycache__
 /external/
 /build/
 /myenv/
+
+/server/logs
