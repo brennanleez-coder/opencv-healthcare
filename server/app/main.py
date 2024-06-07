@@ -2,6 +2,7 @@ from fastapi import FastAPI
 from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from app.utils.logger import Logger
+from .routers import video_processing
 
 app = FastAPI(title="opencv-healthcare", version="1.0.0")
 logger_instance = Logger()
@@ -14,9 +15,11 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+app.include_router(video_processing.router)
 
 @app.get("/")
 async def root():
+    logger.info("Root route accessed")
     return JSONResponse(content={"message": "Hello, World!"})
 
 # Event handlers
