@@ -7,3 +7,5 @@ __pycache__
 /myenv/
 
 /server/logs/*
+
+.DS_Store
