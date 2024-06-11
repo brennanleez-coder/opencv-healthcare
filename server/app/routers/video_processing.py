@@ -28,4 +28,7 @@ async def video_processing():
     logger.info(f"Rep durations: {rep_durations}")
     logger.info(f"Joint displacement history: {joint_displacement_history}")
     
-    return JSONResponse(content={"message": "Video processing completed"})
+    return JSONResponse(
+        status_code=200,
+        content={"elapsed_time": elapsed_time, "counter": counter, "rep_durations": rep_durations, "joint_displacement_history": joint_displacement_history}
+    )
