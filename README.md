@@ -105,3 +105,26 @@ The development process for this project involves several key steps, starting wi
 - Refactor the generated Python script to follow Object-Oriented Programming (OOP) principles. 
 This refactoring helps in organizing the code better and makes it easier to integrate with other components of the project.
 Structuring the code in an OOP manner will facilitate navigation and usage of Python directories from the C++ side programmatically.
+
+
+
+
+Converting code to cython
+- Cython is a superset of Python that allows for the writing of C extensions for Python. It is used to speed up Python code by converting it to C code.
+- To convert Python code to Cython, create a .pyx file and write the code in Cython syntax. Then, create a setup.py file to compile the Cython code into a shared library.
+- To compile the Cython code and move the shared library to the Python path, run the following command:
+```bash
+    ./Cython_algorithms/compile_and_move.sh
+```
+Check that there are no errors, warnings are fine.
+A build_output.log file will be generated in the Cython_algorithms directory. This file contains the output of the compilation process and can be used to debug any issues that arise during the compilation process.
+
+Errors that are fine:
+    PyErr_SetString(PyExc_ZeroDivisionError, "float division");
+Would appreciate any help to fix this error
+
+
+In the setup file:
+1. include the full path to the Python.h file in the include_dirs list.
+2. include the full path to the .pyx file in the ext_modules list.
+This is necessary for the Cython code to compile successfully.

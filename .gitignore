@@ -3,8 +3,11 @@ __pycache__
 *.mp4
 
 /external/
-/build/
+build/
+/*/build/
 /myenv/
+
+*.log
 
 /server/logs/*
 
