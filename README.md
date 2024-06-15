@@ -121,7 +121,7 @@ A build_output.log file will be generated in the Cython_algorithms directory. Th
 
 Errors that are fine:
     PyErr_SetString(PyExc_ZeroDivisionError, "float division");
-Would appreciate any help to fix this error
+Would appreciate any help to fix this error. On second run of compile_and_move.sh, the error disappears.
 
 
 In the setup file:
