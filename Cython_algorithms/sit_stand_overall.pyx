@@ -1,4 +1,4 @@
-# distutils: language = c++
+
 
 # angle_calculation.pyx
 from libc.math cimport atan2, fabs, pi
