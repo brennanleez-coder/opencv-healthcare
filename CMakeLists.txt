@@ -28,10 +28,10 @@ include_directories(
 )
 
 file(GLOB SOURCES "src/*.cpp" "src/lib/**/*.cpp" "src/algo/**/*.cpp")
-add_executable(sit_stand_overall ${SOURCES})
+add_executable(main ${SOURCES})
 
 
 #  Add the pybind11 library
 add_subdirectory(external/pybind11)
 
-target_link_libraries(sit_stand_overall pybind11::embed Python3::Python Python3::Module)
+target_link_libraries(main pybind11::embed Python3::Python Python3::Module)

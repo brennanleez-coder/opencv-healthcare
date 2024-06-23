@@ -7,6 +7,7 @@ CV Functionality:
 - Algorithms written in Python and C++17
 - Opencv
 - MediaPipe for Pose estimation
+- Cython
 
 
 Build tools:
@@ -108,7 +109,7 @@ Structuring the code in an OOP manner will facilitate navigation and usage of Py
 
 
 
-
+#### Updated workflow:
 Converting code to cython
 - Cython is a superset of Python that allows for the writing of C extensions for Python. It is used to speed up Python code by converting it to C code.
 - To convert Python code to Cython, create a .pyx file and write the code in Cython syntax. Then, create a setup.py file to compile the Cython code into a shared library.
@@ -128,3 +129,14 @@ In the setup file:
 1. include the full path to the Python.h file in the include_dirs list.
 2. include the full path to the .pyx file in the ext_modules list.
 This is necessary for the Cython code to compile successfully.
+
+Extra links:
+https://github.com/openvinotoolkit/open_model_zoo/blob/master/demos/human_pose_estimation_demo/cpp/README.md
+
+Client Server approach:
+server/ contains fastapi app
+
+use the following command to run the server locally:
+```bash
+    fastapi dev server/app/main
+```
