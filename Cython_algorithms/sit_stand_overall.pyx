@@ -1,3 +1,5 @@
+# distutils: language = c++
+
 # angle_calculation.pyx
 from libc.math cimport atan2, fabs, pi
 
@@ -54,17 +56,18 @@ cpdef bint should_start_timer(
     double hip_angle,
     double hip_displacement, 
     double knee_displacement, 
-    double ankle_displacement, 
-    double threshold_angle=100.0, 
-    double hip_thresh=3.0, 
-    double knee_thresh=3.0, 
-    double ankle_thresh=1.5
+    double ankle_displacement,
 ):
     """
     Determine if the timer should start based on displacement conditions.
     keypoints should be a 2D array where rows are points [knee, hip, shoulder],
     and each point is an array of two doubles (x, y coordinates).
     """
+    cdef:
+        double threshold_angle=100.0
+        double hip_thresh=3.0
+        double knee_thresh=3.0 
+        double ankle_thresh=1.5
     logging.info(f"Timer not started - Hip angle: {hip_angle:.2f} degrees")
     return (hip_angle < threshold_angle and 
             (hip_displacement > hip_thresh or
@@ -92,7 +95,7 @@ class PoseLandmark(Enum):
     LEFT_WRIST = 15
     RIGHT_WRIST = 16
 
-cpdef tuple get_landmark_coordinates(landmarks, int frame_width, int frame_height, str side="LEFT"):
+cpdef tuple get_landmark_coordinates(landmarks, int frame_width, int frame_height, str side):
     """
     Fetches the coordinates of hip, knee, ankle, shoulder, wrist, and elbow landmarks,
     scaled by the frame dimensions.
@@ -105,7 +108,6 @@ cpdef tuple get_landmark_coordinates(landmarks, int frame_width, int frame_heigh
         cnp.ndarray[cnp.float64_t, ndim=1] shoulder = np.zeros(2, dtype=np.float64)
         cnp.ndarray[cnp.float64_t, ndim=1] wrist = np.zeros(2, dtype=np.float64)
         cnp.ndarray[cnp.float64_t, ndim=1] elbow = np.zeros(2, dtype=np.float64)
-
     if side == "RIGHT":
         hip_idx = PoseLandmark.RIGHT_HIP.value
         knee_idx = PoseLandmark.RIGHT_KNEE.value
@@ -141,12 +143,15 @@ cpdef tuple get_landmark_coordinates(landmarks, int frame_width, int frame_heigh
 import logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
-cpdef str determine_failure(double elapsed_time, int counter, double threshold_time=12.0, double tolerance=0.001, bint debug = True):
+cpdef str determine_failure(double elapsed_time, int counter, bint debug):
     """
     Determine if the user has failed based on the elapsed time with precision up to 5 decimal places.
     Includes a tolerance for comparisons to handle edge cases near the threshold.
     """
     # Log the elapsed time with high precision
+    cdef:
+        double tolerance=0.001
+        double threshold_time=12.0
     if debug:
         logging.info(f"Elapsed time: {elapsed_time:.5f}")
 
@@ -158,8 +163,7 @@ cpdef str determine_failure(double elapsed_time, int counter, double threshold_t
 
 
 # summarise_results.pyx
-cpdef void summarise_results(int counter, double elapsed_time, list rep_durations,list violations, list max_angles,
-                             dict joint_displacement_map=None, dict joint_velocity_map=None):
+cpdef void summarise_results(int counter, double elapsed_time, list rep_durations,list violations, list max_angles):
     """
     Logs a summary of video processing results including repetition counts and times,
     and uses determine_failure to log the pass/fail status based on elapsed time.
@@ -169,7 +173,7 @@ cpdef void summarise_results(int counter, double elapsed_time, list rep_duration
     logging.info("                     Video processing summary                     ")
     logging.info("==========================================================")
     
-    logging.info(f"Pass status: {determine_failure(elapsed_time, counter)}")
+    logging.info(f"Pass status: {determine_failure(elapsed_time, counter, True)}")
     logging.info(f"Total repetitions: {counter} completed in {elapsed_time:.2f} seconds")
 
     if violations:
@@ -187,13 +191,6 @@ cpdef void summarise_results(int counter, double elapsed_time, list rep_duration
         logging.info(f"Maximum angle per repetition: {max(max_angles):.2f} degrees")
         average_angle = sum(max_angles) / len(max_angles)
         logging.info(f"Average angle per repetition: {average_angle:.2f} degrees")    
-
-    # Handle joint displacement and velocity maps if needed
-    if joint_displacement_map is not None:
-        logging.info("Joint displacement map details not shown for brevity.")
-
-    if joint_velocity_map is not None:
-        logging.info("Joint velocity map details not shown for brevity.")
 # display_angles.pyx
 import cv2
 
@@ -203,13 +200,12 @@ cpdef void display_knee_and_hip_angle(
     double knee_angle,
     double[:] knee,
     double hip_angle,
-    double[:] hip,
-    double x_displacement=60.0
-):
+    double[:] hip):
     """
     Display the knee and hip angles on the screen, 60px to the right of the respective joints.
     """
     cdef:
+        double x_displacement=60.0
         int knee_x = int(knee[0] + x_displacement)
         int knee_y = int(knee[1])
         int hip_x = int(hip[0] + x_displacement)
@@ -371,10 +367,13 @@ cpdef void display_information(cnp.ndarray[cnp.uint8_t, ndim=3] image, int count
         cv2.LINE_AA,
     )
 
-cpdef void display_timer(cnp.ndarray[cnp.uint8_t, ndim=3] image, double elapsed_time, int x = 800, int y = 60):
+cpdef void display_timer(cnp.ndarray[cnp.uint8_t, ndim=3] image, double elapsed_time):
     """
     Display the elapsed time on the screen.
     """
+    cdef:
+        int x = 800
+        int y = 60
     cv2.putText(
         image,
         f"Time: {elapsed_time:.2f} s",
@@ -417,24 +416,29 @@ import mediapipe as mp
 mp_pose = mp.solutions.pose
 
 # Make a OOP class for Hand Violation
-cdef class Violation:
-    cdef str category
-    cdef str timestamp
-    cdef str reason
+# cdef class Violation:
+#     cdef str category
+#     cdef str timestamp
+#     cdef str reason
 
-    def __init__(self, category, timestamp, reason):
-        self.category = category
-        self.timestamp = timestamp
-        self.reason = reason
-    def __str__(self):
-        return f"Violation(category={self.category}, timestamp={self.timestamp}, reason={self.reason})"
-    def display(self):
-        print(f"Category: {self.category}")
-        print(f"Timestamp: {self.timestamp}")
-        print(f"Reason: {self.reason}")
+#     def __init__(self, category, timestamp, reason):
+#         self.category = category
+#         self.timestamp = timestamp
+#         self.reason = reason
+#     def __str__(self):
+#         return f"Violation(category={self.category}, timestamp={self.timestamp}, reason={self.reason})"
+#     def display(self):
+#         print(f"Category: {self.category}")
+#         print(f"Timestamp: {self.timestamp}")
+#         print(f"Reason: {self.reason}")
 
-cpdef sit_stand_overall(str video_path):
+cpdef sit_stand_overall(str video_path, bint display):
+    '''
+        display flag should only be set for debugging purposes:
+        Draws on the image for visualization purposes
+    '''
     # Initialize variables for counter logic
+
     cdef:
         int counter = 0
         object stage = None
@@ -495,25 +499,26 @@ cpdef sit_stand_overall(str video_path):
             ret, frame = cap.read()
             if not ret:
                 logging.warning("No frame captured from the video source.")
-                break  
+                break
             frame_height, frame_width, _ = frame.shape
+            
             image = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
             image.flags.writeable = False
             results = pose.process(image)
             image.flags.writeable = True
             image = cv2.cvtColor(image, cv2.COLOR_RGB2BGR)
-            display_timer(image, elapsed_time)
+
             if timer_started:
                 elapsed_time = get_real_time_from_frames(frames_after_start, frame_rate)
                 frames_after_start += 1
-                
+            
             # Process the frame
             if results.pose_landmarks:
                 landmarks = results.pose_landmarks.landmark
 
                 # Extract coordinates multiplied by frame dimensions for optical flow and angle calculation
                 hip, knee, ankle, shoulder, wrist, elbow = get_landmark_coordinates(
-                    landmarks, frame_width, frame_height
+                    landmarks, frame_width, frame_height, "LEFT"
                 )
                 time_after_start = get_real_time_from_frames(frames_after_start, frame_rate)
                 joint_history["HIP"].append((time_after_start, hip))
@@ -523,7 +528,7 @@ cpdef sit_stand_overall(str video_path):
                 if stage_counter >= confirm_frames:
                     hand_angle = calculate_angle(shoulder, elbow, wrist)
                     if hand_angle > elbow_angle_threshold:
-                        violations.append(Violation("HAND", elapsed_time, f"Hand angle violation: {hand_angle:.2f} degrees"))
+                        violations.append(("HAND", elapsed_time, f"Hand angle violation: {hand_angle:.2f} degrees"))
                         logging.info(f"Hand angle violation detected: {hand_angle:.2f} degrees.")
                 angle = calculate_angle(hip, knee, ankle)
                 hip_angle = calculate_angle(shoulder, hip, knee)
@@ -598,11 +603,13 @@ cpdef sit_stand_overall(str video_path):
                     max_angle_per_rep = angle
                 last_angle = angle
                 
-
-                display_information(image, counter, stage, max_angle_per_rep)
-
-                draw_landmarks_and_connections(image, results)
-            cv2.imshow("5 Rep Sit Stand Test", image)
+                if display:
+                    display_information(image, counter, stage, max_angle_per_rep)
+                    draw_landmarks_and_connections(image, results)
+            if display:
+                display_timer(image, elapsed_time)
+                cv2.imshow("5 Rep Sit Stand Test", image)
+                            
             if cv2.waitKey(10) & 0xFF == ord("q"):
                 break
         cap.release()

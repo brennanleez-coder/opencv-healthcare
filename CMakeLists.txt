@@ -2,13 +2,36 @@ cmake_minimum_required(VERSION 3.10)
 
 project(OpenCvHealthcare)
 
-include_directories(src/include)
-file(GLOB SOURCES "src/*.cpp" "src/lib/**/*.cpp")
+find_package(Python3 REQUIRED COMPONENTS Interpreter Development REQUIRED)
 
-add_executable(main ${SOURCES})
+execute_process(
+    COMMAND "${Python3_EXECUTABLE}" -c "import numpy; print(numpy.get_include())"
+    RESULT_VARIABLE NUMPY_FIND_RESULT
+    OUTPUT_VARIABLE NUMPY_INCLUDE_DIR
+    OUTPUT_STRIP_TRAILING_WHITESPACE
+)
+
+if(NOT NUMPY_INCLUDE_DIR)
+    message(FATAL_ERROR "NumPy include directory not found")
+else()
+    message(STATUS "NumPy include directory found at ${NUMPY_INCLUDE_DIR}")
+endif()
+
+# find_package(pybind11 REQUIRED)
+
+include_directories(
+    ${NUMPY_INCLUDE_DIR}
+    ${Python3_INCLUDE_DIRS}
+    # ${pybind11_INCLUDE_DIRS}
+    src/include
+    src/cython/include
+)
+
+file(GLOB SOURCES "src/*.cpp" "src/lib/**/*.cpp" "src/algo/**/*.cpp")
+add_executable(sit_stand_overall ${SOURCES})
 
 
 #  Add the pybind11 library
 add_subdirectory(external/pybind11)
 
-target_link_libraries(main pybind11::embed)
+target_link_libraries(sit_stand_overall pybind11::embed Python3::Python Python3::Module)

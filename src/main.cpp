@@ -26,7 +26,7 @@ int main()
         // Path to the virtual environment, now relative to the project root
         string venv_path = project_root + "/myenv";
         cout << "Virtual environment path: " << venv_path << endl;
-        string site_packages_path = venv_path + "/lib/python3.11/site-packages";
+        string site_packages_path = venv_path + "/lib/python3.10/site-packages";
         cout << "Site packages path: " << site_packages_path << endl;
 
         // Update sys.path to include the virtual environment's packages and the module path
