@@ -1,7 +1,8 @@
-from fastapi import APIRouter, BackgroundTasks
+from fastapi import APIRouter, BackgroundTasks, UploadFile, File
 from fastapi.responses import JSONResponse
 from queue import Queue, Empty
 import threading
+import uuid
 from app.utils.logger import Logger
 import app.algorithms.sit_stand_overall as sso
 
@@ -9,33 +10,52 @@ router = APIRouter()
 logger_instance = Logger()
 logger = logger_instance.get_logger()
 
-# Global queue to hold results
-result_queue = Queue()
+# Dictionary to hold result queues for each UUID
+result_queues = {}
 
-def thread_function(queue, logger):
-    result = sso.sit_stand_overall('/Users/brennanlee/Desktop/opencv-healthcare/test/CST_self2.mp4', False)
-    queue.put(result)
+def thread_function(video_path, queue, logger):
+    try:
+        result = sso.sit_stand_overall(video_path, False)
+        queue.put(result)
+    except Exception as e:
+        logger.error(f"Error processing video: {e}")
+        queue.put(None)
 
-def process_video(queue: Queue, logger):
-    thread = threading.Thread(target=thread_function, args=(queue, logger))
+def process_video(file: UploadFile, queue: Queue, logger):
+    video_path = f"/tmp/{file.filename}"
+    with open(video_path, "wb") as f:
+        f.write(file.file.read())
+    thread = threading.Thread(target=thread_function, args=(video_path, queue, logger))
     thread.start()
-    thread.join()  # Wait for the thread to finish
-    logger.info("Video processing completed")
 
-@router.get("/video_processing")
-async def video_processing(background_tasks: BackgroundTasks):
+@router.post("/video_processing")
+async def video_processing(background_tasks: BackgroundTasks, file: UploadFile = File(...)):
+    # Generate a unique ID for this video processing request
+    request_id = str(uuid.uuid4())
+    
+    # Create a queue for this request ID
+    result_queue = Queue()
+    result_queues[request_id] = result_queue
+
     # Start video processing in background
-    background_tasks.add_task(process_video, result_queue, logger)
-    logger.info("Video processing started in background")
+    background_tasks.add_task(process_video, file, result_queue, logger)
+    logger.info(f"Video processing started in background for request ID {request_id}")
     
     # Respond immediately while processing continues in the background
     return JSONResponse(
         status_code=200,
-        content={"message": "Video processing started in background"}
+        content={"message": "Video processing started in background", "request_id": request_id}
     )
 
-@router.get("/video_result")
-async def video_result():
+@router.get("/video_result/{request_id}")
+async def video_result(request_id: str):
+    if request_id not in result_queues:
+        return JSONResponse(
+            status_code=404,
+            content={"message": "Invalid request ID"}
+        )
+    
+    result_queue = result_queues[request_id]
     try:
         result = result_queue.get_nowait()  # Retrieve the result from the queue without blocking
     except Empty:
@@ -44,6 +64,15 @@ async def video_result():
             content={"message": "Video processing is still ongoing"}
         )
     
+    if result is None:
+        return JSONResponse(
+            status_code=500,
+            content={"message": "An error occurred during video processing"}
+        )
+    
+    # Clean up the result queue
+    del result_queues[request_id]
+
     counter, elapsed_time, rep_durations, violations, max_angles = result
     logger.info(f"Elapsed time: {elapsed_time} seconds")
     logger.info(f"Counter: {counter}")
