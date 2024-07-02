@@ -3,8 +3,9 @@ from fastapi.responses import JSONResponse
 from queue import Queue, Empty
 import threading
 import uuid
+import os
 from app.utils.logger import Logger
-import app.algorithms.sit_stand_overall as sso
+from app.algorithms import sit_stand_overall as sso
 
 router = APIRouter()
 logger_instance = Logger()
@@ -20,11 +21,14 @@ def thread_function(video_path, queue, logger):
     except Exception as e:
         logger.error(f"Error processing video: {e}")
         queue.put(None)
+    finally:
+        if os.path.exists(video_path):
+            os.remove(video_path)  # Ensure the temporary file is deleted
 
-def process_video(file: UploadFile, queue: Queue, logger):
-    video_path = f"/tmp/{file.filename}"
+def process_video(file_content: bytes, filename: str, request_id: str, queue: Queue, logger):
+    video_path = f"/tmp/{request_id}_{filename}"
     with open(video_path, "wb") as f:
-        f.write(file.file.read())
+        f.write(file_content)
     thread = threading.Thread(target=thread_function, args=(video_path, queue, logger))
     thread.start()
 
@@ -33,12 +37,15 @@ async def video_processing(background_tasks: BackgroundTasks, file: UploadFile =
     # Generate a unique ID for this video processing request
     request_id = str(uuid.uuid4())
     
+    # Read the file content into memory
+    file_content = await file.read()
+    
     # Create a queue for this request ID
     result_queue = Queue()
     result_queues[request_id] = result_queue
 
     # Start video processing in background
-    background_tasks.add_task(process_video, file, result_queue, logger)
+    background_tasks.add_task(process_video, file_content, file.filename, request_id, result_queue, logger)
     logger.info(f"Video processing started in background for request ID {request_id}")
     
     # Respond immediately while processing continues in the background
@@ -73,7 +80,7 @@ async def video_result(request_id: str):
     # Clean up the result queue
     del result_queues[request_id]
 
-    counter, elapsed_time, rep_durations, violations, max_angles = result
+    type, pass_fail, counter, elapsed_time, rep_durations, violations, max_angles = result
     logger.info(f"Elapsed time: {elapsed_time} seconds")
     logger.info(f"Counter: {counter}")
     logger.info(f"Rep durations: {rep_durations}")
@@ -83,6 +90,8 @@ async def video_result(request_id: str):
     return JSONResponse(
         status_code=200,
         content={
+            "type": type,
+            "pass_fail": pass_fail,  # "pass" or "fail
             "counter": counter,
             "elapsed_time": elapsed_time,
             "rep_durations": rep_durations,

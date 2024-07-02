@@ -2,7 +2,7 @@ from fastapi import FastAPI
 from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from app.utils.logger import Logger
-from .routers import video_processing
+from app.routers import video_processing
 
 app = FastAPI(title="opencv-healthcare", version="1.0.0")
 logger_instance = Logger()

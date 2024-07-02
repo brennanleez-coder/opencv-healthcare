@@ -616,4 +616,6 @@ cpdef sit_stand_overall(str video_path, bint display):
         cv2.destroyAllWindows()
         summarise_results(counter, elapsed_time, rep_durations, violations, max_angles)
 
-        return counter, elapsed_time, rep_durations, violations, max_angles
+        return "5 Sit Stand", determine_failure(
+            elapsed_time, counter, False
+        ),counter, elapsed_time, rep_durations, violations, max_angles
