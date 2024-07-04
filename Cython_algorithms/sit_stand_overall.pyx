@@ -432,7 +432,7 @@ mp_pose = mp.solutions.pose
 #         print(f"Timestamp: {self.timestamp}")
 #         print(f"Reason: {self.reason}")
 
-cpdef sit_stand_overall(str video_path, bint display):
+cpdef process_sit_stand(str video_path, bint display):
     '''
         display flag should only be set for debugging purposes:
         Draws on the image for visualization purposes

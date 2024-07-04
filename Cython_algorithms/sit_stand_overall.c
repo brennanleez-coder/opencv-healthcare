@@ -3432,7 +3432,7 @@ static void __pyx_f_17sit_stand_overall_display_timer(PyArrayObject *, double, i
 static void __pyx_f_17sit_stand_overall_draw_landmarks_and_connections(PyArrayObject *, PyObject *, int __pyx_skip_dispatch); /*proto*/
 static double __pyx_f_17sit_stand_overall_get_real_time_from_frames(int, double, int __pyx_skip_dispatch); /*proto*/
 static int __pyx_f_17sit_stand_overall_check_completion(int, PyObject *, int __pyx_skip_dispatch); /*proto*/
-static PyObject *__pyx_f_17sit_stand_overall_sit_stand_overall(PyObject *, int, int __pyx_skip_dispatch); /*proto*/
+static PyObject *__pyx_f_17sit_stand_overall_process_sit_stand(PyObject *, int, int __pyx_skip_dispatch); /*proto*/
 static int __pyx_array_allocate_buffer(struct __pyx_array_obj *); /*proto*/
 static struct __pyx_array_obj *__pyx_array_new(PyObject *, Py_ssize_t, char *, char *, char *); /*proto*/
 static PyObject *__pyx_memoryview_new(PyObject *, int, int, __Pyx_TypeInfo *); /*proto*/
@@ -3740,6 +3740,7 @@ static const char __pyx_k_Total_repetitions[] = "Total repetitions: ";
 static const char __pyx_k_destroyAllWindows[] = "destroyAllWindows";
 static const char __pyx_k_determine_failure[] = "determine_failure";
 static const char __pyx_k_knee_displacement[] = "knee_displacement";
+static const char __pyx_k_process_sit_stand[] = "process_sit_stand";
 static const char __pyx_k_pyx_unpickle_Enum[] = "__pyx_unpickle_Enum";
 static const char __pyx_k_sit_stand_overall[] = "sit_stand_overall";
 static const char __pyx_k_summarise_results[] = "summarise_results";
@@ -3867,7 +3868,7 @@ static PyObject *__pyx_pf_17sit_stand_overall_24display_timer(CYTHON_UNUSED PyOb
 static PyObject *__pyx_pf_17sit_stand_overall_26draw_landmarks_and_connections(CYTHON_UNUSED PyObject *__pyx_self, PyArrayObject *__pyx_v_image, PyObject *__pyx_v_results); /* proto */
 static PyObject *__pyx_pf_17sit_stand_overall_28get_real_time_from_frames(CYTHON_UNUSED PyObject *__pyx_self, int __pyx_v_frame_counter, double __pyx_v_fps); /* proto */
 static PyObject *__pyx_pf_17sit_stand_overall_30check_completion(CYTHON_UNUSED PyObject *__pyx_self, int __pyx_v_counter, PyObject *__pyx_v_stage); /* proto */
-static PyObject *__pyx_pf_17sit_stand_overall_32sit_stand_overall(CYTHON_UNUSED PyObject *__pyx_self, PyObject *__pyx_v_video_path, int __pyx_v_display); /* proto */
+static PyObject *__pyx_pf_17sit_stand_overall_32process_sit_stand(CYTHON_UNUSED PyObject *__pyx_self, PyObject *__pyx_v_video_path, int __pyx_v_display); /* proto */
 static PyObject *__pyx_tp_new_array(PyTypeObject *t, PyObject *a, PyObject *k); /*proto*/
 static PyObject *__pyx_tp_new_Enum(PyTypeObject *t, PyObject *a, PyObject *k); /*proto*/
 static PyObject *__pyx_tp_new_memoryview(PyTypeObject *t, PyObject *a, PyObject *k); /*proto*/
@@ -4202,6 +4203,7 @@ typedef struct {
   PyObject *__pyx_n_s_prev_point;
   PyObject *__pyx_n_s_prev_points;
   PyObject *__pyx_n_s_process;
+  PyObject *__pyx_n_s_process_sit_stand;
   PyObject *__pyx_n_s_putText;
   PyObject *__pyx_kp_u_px_from;
   PyObject *__pyx_n_s_pyx_PickleError;
@@ -4694,6 +4696,7 @@ static int __pyx_m_clear(PyObject *m) {
   Py_CLEAR(clear_module_state->__pyx_n_s_prev_point);
   Py_CLEAR(clear_module_state->__pyx_n_s_prev_points);
   Py_CLEAR(clear_module_state->__pyx_n_s_process);
+  Py_CLEAR(clear_module_state->__pyx_n_s_process_sit_stand);
   Py_CLEAR(clear_module_state->__pyx_n_s_putText);
   Py_CLEAR(clear_module_state->__pyx_kp_u_px_from);
   Py_CLEAR(clear_module_state->__pyx_n_s_pyx_PickleError);
@@ -5164,6 +5167,7 @@ static int __pyx_m_traverse(PyObject *m, visitproc visit, void *arg) {
   Py_VISIT(traverse_module_state->__pyx_n_s_prev_point);
   Py_VISIT(traverse_module_state->__pyx_n_s_prev_points);
   Py_VISIT(traverse_module_state->__pyx_n_s_process);
+  Py_VISIT(traverse_module_state->__pyx_n_s_process_sit_stand);
   Py_VISIT(traverse_module_state->__pyx_n_s_putText);
   Py_VISIT(traverse_module_state->__pyx_kp_u_px_from);
   Py_VISIT(traverse_module_state->__pyx_n_s_pyx_PickleError);
@@ -5670,6 +5674,7 @@ static int __pyx_m_traverse(PyObject *m, visitproc visit, void *arg) {
 #define __pyx_n_s_prev_point __pyx_mstate_global->__pyx_n_s_prev_point
 #define __pyx_n_s_prev_points __pyx_mstate_global->__pyx_n_s_prev_points
 #define __pyx_n_s_process __pyx_mstate_global->__pyx_n_s_process
+#define __pyx_n_s_process_sit_stand __pyx_mstate_global->__pyx_n_s_process_sit_stand
 #define __pyx_n_s_putText __pyx_mstate_global->__pyx_n_s_putText
 #define __pyx_kp_u_px_from __pyx_mstate_global->__pyx_kp_u_px_from
 #define __pyx_n_s_pyx_PickleError __pyx_mstate_global->__pyx_n_s_pyx_PickleError
@@ -30464,19 +30469,19 @@ static PyObject *__pyx_pf_17sit_stand_overall_30check_completion(CYTHON_UNUSED P
 /* "sit_stand_overall.pyx":435
  * #         print(f"Reason: {self.reason}")
  * 
- * cpdef sit_stand_overall(str video_path, bint display):             # <<<<<<<<<<<<<<
+ * cpdef process_sit_stand(str video_path, bint display):             # <<<<<<<<<<<<<<
  *     '''
  *         display flag should only be set for debugging purposes:
  */
 
-static PyObject *__pyx_pw_17sit_stand_overall_33sit_stand_overall(PyObject *__pyx_self, 
+static PyObject *__pyx_pw_17sit_stand_overall_33process_sit_stand(PyObject *__pyx_self, 
 #if CYTHON_METH_FASTCALL
 PyObject *const *__pyx_args, Py_ssize_t __pyx_nargs, PyObject *__pyx_kwds
 #else
 PyObject *__pyx_args, PyObject *__pyx_kwds
 #endif
 ); /*proto*/
-static PyObject *__pyx_f_17sit_stand_overall_sit_stand_overall(PyObject *__pyx_v_video_path, int __pyx_v_display, CYTHON_UNUSED int __pyx_skip_dispatch) {
+static PyObject *__pyx_f_17sit_stand_overall_process_sit_stand(PyObject *__pyx_v_video_path, int __pyx_v_display, CYTHON_UNUSED int __pyx_skip_dispatch) {
   int __pyx_v_counter;
   PyObject *__pyx_v_stage = 0;
   int __pyx_v_confirm_frames;
@@ -30567,7 +30572,7 @@ static PyObject *__pyx_f_17sit_stand_overall_sit_stand_overall(PyObject *__pyx_v
   int __pyx_lineno = 0;
   const char *__pyx_filename = NULL;
   int __pyx_clineno = 0;
-  __Pyx_RefNannySetupContext("sit_stand_overall", 1);
+  __Pyx_RefNannySetupContext("process_sit_stand", 1);
 
   /* "sit_stand_overall.pyx":443
  * 
@@ -31129,7 +31134,7 @@ static PyObject *__pyx_f_17sit_stand_overall_sit_stand_overall(PyObject *__pyx_v
  */
     __pyx_t_7 = __Pyx_PyErr_ExceptionMatches(__pyx_builtin_ValueError);
     if (__pyx_t_7) {
-      __Pyx_AddTraceback("sit_stand_overall.sit_stand_overall", __pyx_clineno, __pyx_lineno, __pyx_filename);
+      __Pyx_AddTraceback("sit_stand_overall.process_sit_stand", __pyx_clineno, __pyx_lineno, __pyx_filename);
       if (__Pyx_GetException(&__pyx_t_1, &__pyx_t_6, &__pyx_t_10) < 0) __PYX_ERR(0, 494, __pyx_L5_except_error)
       __Pyx_XGOTREF(__pyx_t_1);
       __Pyx_XGOTREF(__pyx_t_6);
@@ -33487,7 +33492,7 @@ static PyObject *__pyx_f_17sit_stand_overall_sit_stand_overall(PyObject *__pyx_v
         __pyx_t_27.memview = NULL; __pyx_t_27.data = NULL;
         __Pyx_XDECREF(__pyx_t_6); __pyx_t_6 = 0;
         /*except:*/ {
-          __Pyx_AddTraceback("sit_stand_overall.sit_stand_overall", __pyx_clineno, __pyx_lineno, __pyx_filename);
+          __Pyx_AddTraceback("sit_stand_overall.process_sit_stand", __pyx_clineno, __pyx_lineno, __pyx_filename);
           if (__Pyx_GetException(&__pyx_t_12, &__pyx_t_10, &__pyx_t_13) < 0) __PYX_ERR(0, 497, __pyx_L27_except_error)
           __Pyx_XGOTREF(__pyx_t_12);
           __Pyx_XGOTREF(__pyx_t_10);
@@ -33572,7 +33577,7 @@ static PyObject *__pyx_f_17sit_stand_overall_sit_stand_overall(PyObject *__pyx_v
   /* "sit_stand_overall.pyx":435
  * #         print(f"Reason: {self.reason}")
  * 
- * cpdef sit_stand_overall(str video_path, bint display):             # <<<<<<<<<<<<<<
+ * cpdef process_sit_stand(str video_path, bint display):             # <<<<<<<<<<<<<<
  *     '''
  *         display flag should only be set for debugging purposes:
  */
@@ -33591,7 +33596,7 @@ static PyObject *__pyx_f_17sit_stand_overall_sit_stand_overall(PyObject *__pyx_v
   __PYX_XCLEAR_MEMVIEW(&__pyx_t_25, 1);
   __PYX_XCLEAR_MEMVIEW(&__pyx_t_26, 1);
   __PYX_XCLEAR_MEMVIEW(&__pyx_t_27, 1);
-  __Pyx_AddTraceback("sit_stand_overall.sit_stand_overall", __pyx_clineno, __pyx_lineno, __pyx_filename);
+  __Pyx_AddTraceback("sit_stand_overall.process_sit_stand", __pyx_clineno, __pyx_lineno, __pyx_filename);
   __pyx_r = 0;
   __pyx_L0:;
   __Pyx_XDECREF(__pyx_v_stage);
@@ -33634,16 +33639,16 @@ static PyObject *__pyx_f_17sit_stand_overall_sit_stand_overall(PyObject *__pyx_v
 }
 
 /* Python wrapper */
-static PyObject *__pyx_pw_17sit_stand_overall_33sit_stand_overall(PyObject *__pyx_self, 
+static PyObject *__pyx_pw_17sit_stand_overall_33process_sit_stand(PyObject *__pyx_self, 
 #if CYTHON_METH_FASTCALL
 PyObject *const *__pyx_args, Py_ssize_t __pyx_nargs, PyObject *__pyx_kwds
 #else
 PyObject *__pyx_args, PyObject *__pyx_kwds
 #endif
 ); /*proto*/
-PyDoc_STRVAR(__pyx_doc_17sit_stand_overall_32sit_stand_overall, "\n        display flag should only be set for debugging purposes:\n        Draws on the image for visualization purposes\n    ");
-static PyMethodDef __pyx_mdef_17sit_stand_overall_33sit_stand_overall = {"sit_stand_overall", (PyCFunction)(void*)(__Pyx_PyCFunction_FastCallWithKeywords)__pyx_pw_17sit_stand_overall_33sit_stand_overall, __Pyx_METH_FASTCALL|METH_KEYWORDS, __pyx_doc_17sit_stand_overall_32sit_stand_overall};
-static PyObject *__pyx_pw_17sit_stand_overall_33sit_stand_overall(PyObject *__pyx_self, 
+PyDoc_STRVAR(__pyx_doc_17sit_stand_overall_32process_sit_stand, "\n        display flag should only be set for debugging purposes:\n        Draws on the image for visualization purposes\n    ");
+static PyMethodDef __pyx_mdef_17sit_stand_overall_33process_sit_stand = {"process_sit_stand", (PyCFunction)(void*)(__Pyx_PyCFunction_FastCallWithKeywords)__pyx_pw_17sit_stand_overall_33process_sit_stand, __Pyx_METH_FASTCALL|METH_KEYWORDS, __pyx_doc_17sit_stand_overall_32process_sit_stand};
+static PyObject *__pyx_pw_17sit_stand_overall_33process_sit_stand(PyObject *__pyx_self, 
 #if CYTHON_METH_FASTCALL
 PyObject *const *__pyx_args, Py_ssize_t __pyx_nargs, PyObject *__pyx_kwds
 #else
@@ -33662,7 +33667,7 @@ PyObject *__pyx_args, PyObject *__pyx_kwds
   int __pyx_clineno = 0;
   PyObject *__pyx_r = 0;
   __Pyx_RefNannyDeclarations
-  __Pyx_RefNannySetupContext("sit_stand_overall (wrapper)", 0);
+  __Pyx_RefNannySetupContext("process_sit_stand (wrapper)", 0);
   #if !CYTHON_METH_FASTCALL
   #if CYTHON_ASSUME_SAFE_MACROS
   __pyx_nargs = PyTuple_GET_SIZE(__pyx_args);
@@ -33700,12 +33705,12 @@ PyObject *__pyx_args, PyObject *__pyx_kwds
         }
         else if (unlikely(PyErr_Occurred())) __PYX_ERR(0, 435, __pyx_L3_error)
         else {
-          __Pyx_RaiseArgtupleInvalid("sit_stand_overall", 1, 2, 2, 1); __PYX_ERR(0, 435, __pyx_L3_error)
+          __Pyx_RaiseArgtupleInvalid("process_sit_stand", 1, 2, 2, 1); __PYX_ERR(0, 435, __pyx_L3_error)
         }
       }
       if (unlikely(kw_args > 0)) {
         const Py_ssize_t kwd_pos_args = __pyx_nargs;
-        if (unlikely(__Pyx_ParseOptionalKeywords(__pyx_kwds, __pyx_kwvalues, __pyx_pyargnames, 0, values + 0, kwd_pos_args, "sit_stand_overall") < 0)) __PYX_ERR(0, 435, __pyx_L3_error)
+        if (unlikely(__Pyx_ParseOptionalKeywords(__pyx_kwds, __pyx_kwvalues, __pyx_pyargnames, 0, values + 0, kwd_pos_args, "process_sit_stand") < 0)) __PYX_ERR(0, 435, __pyx_L3_error)
       }
     } else if (unlikely(__pyx_nargs != 2)) {
       goto __pyx_L5_argtuple_error;
@@ -33718,7 +33723,7 @@ PyObject *__pyx_args, PyObject *__pyx_kwds
   }
   goto __pyx_L6_skip;
   __pyx_L5_argtuple_error:;
-  __Pyx_RaiseArgtupleInvalid("sit_stand_overall", 1, 2, 2, __pyx_nargs); __PYX_ERR(0, 435, __pyx_L3_error)
+  __Pyx_RaiseArgtupleInvalid("process_sit_stand", 1, 2, 2, __pyx_nargs); __PYX_ERR(0, 435, __pyx_L3_error)
   __pyx_L6_skip:;
   goto __pyx_L4_argument_unpacking_done;
   __pyx_L3_error:;
@@ -33728,12 +33733,12 @@ PyObject *__pyx_args, PyObject *__pyx_kwds
       __Pyx_Arg_XDECREF_FASTCALL(values[__pyx_temp]);
     }
   }
-  __Pyx_AddTraceback("sit_stand_overall.sit_stand_overall", __pyx_clineno, __pyx_lineno, __pyx_filename);
+  __Pyx_AddTraceback("sit_stand_overall.process_sit_stand", __pyx_clineno, __pyx_lineno, __pyx_filename);
   __Pyx_RefNannyFinishContext();
   return NULL;
   __pyx_L4_argument_unpacking_done:;
   if (unlikely(!__Pyx_ArgTypeTest(((PyObject *)__pyx_v_video_path), (&PyString_Type), 1, "video_path", 1))) __PYX_ERR(0, 435, __pyx_L1_error)
-  __pyx_r = __pyx_pf_17sit_stand_overall_32sit_stand_overall(__pyx_self, __pyx_v_video_path, __pyx_v_display);
+  __pyx_r = __pyx_pf_17sit_stand_overall_32process_sit_stand(__pyx_self, __pyx_v_video_path, __pyx_v_display);
 
   /* function exit code */
   goto __pyx_L0;
@@ -33750,16 +33755,16 @@ PyObject *__pyx_args, PyObject *__pyx_kwds
   return __pyx_r;
 }
 
-static PyObject *__pyx_pf_17sit_stand_overall_32sit_stand_overall(CYTHON_UNUSED PyObject *__pyx_self, PyObject *__pyx_v_video_path, int __pyx_v_display) {
+static PyObject *__pyx_pf_17sit_stand_overall_32process_sit_stand(CYTHON_UNUSED PyObject *__pyx_self, PyObject *__pyx_v_video_path, int __pyx_v_display) {
   PyObject *__pyx_r = NULL;
   __Pyx_RefNannyDeclarations
   PyObject *__pyx_t_1 = NULL;
   int __pyx_lineno = 0;
   const char *__pyx_filename = NULL;
   int __pyx_clineno = 0;
-  __Pyx_RefNannySetupContext("sit_stand_overall", 1);
+  __Pyx_RefNannySetupContext("process_sit_stand", 1);
   __Pyx_XDECREF(__pyx_r);
-  __pyx_t_1 = __pyx_f_17sit_stand_overall_sit_stand_overall(__pyx_v_video_path, __pyx_v_display, 0); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 435, __pyx_L1_error)
+  __pyx_t_1 = __pyx_f_17sit_stand_overall_process_sit_stand(__pyx_v_video_path, __pyx_v_display, 0); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 435, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_1);
   __pyx_r = __pyx_t_1;
   __pyx_t_1 = 0;
@@ -33768,7 +33773,7 @@ static PyObject *__pyx_pf_17sit_stand_overall_32sit_stand_overall(CYTHON_UNUSED 
   /* function exit code */
   __pyx_L1_error:;
   __Pyx_XDECREF(__pyx_t_1);
-  __Pyx_AddTraceback("sit_stand_overall.sit_stand_overall", __pyx_clineno, __pyx_lineno, __pyx_filename);
+  __Pyx_AddTraceback("sit_stand_overall.process_sit_stand", __pyx_clineno, __pyx_lineno, __pyx_filename);
   __pyx_r = NULL;
   __pyx_L0:;
   __Pyx_XGIVEREF(__pyx_r);
@@ -34984,6 +34989,7 @@ static int __Pyx_CreateStringTabAndInitStrings(void) {
     {&__pyx_n_s_prev_point, __pyx_k_prev_point, sizeof(__pyx_k_prev_point), 0, 0, 1, 1},
     {&__pyx_n_s_prev_points, __pyx_k_prev_points, sizeof(__pyx_k_prev_points), 0, 0, 1, 1},
     {&__pyx_n_s_process, __pyx_k_process, sizeof(__pyx_k_process), 0, 0, 1, 1},
+    {&__pyx_n_s_process_sit_stand, __pyx_k_process_sit_stand, sizeof(__pyx_k_process_sit_stand), 0, 0, 1, 1},
     {&__pyx_n_s_putText, __pyx_k_putText, sizeof(__pyx_k_putText), 0, 0, 1, 1},
     {&__pyx_kp_u_px_from, __pyx_k_px_from, sizeof(__pyx_k_px_from), 0, 1, 0, 0},
     {&__pyx_n_s_pyx_PickleError, __pyx_k_pyx_PickleError, sizeof(__pyx_k_pyx_PickleError), 0, 0, 1, 1},
@@ -35644,14 +35650,14 @@ static CYTHON_SMALL_CODE int __Pyx_InitCachedConstants(void) {
   /* "sit_stand_overall.pyx":435
  * #         print(f"Reason: {self.reason}")
  * 
- * cpdef sit_stand_overall(str video_path, bint display):             # <<<<<<<<<<<<<<
+ * cpdef process_sit_stand(str video_path, bint display):             # <<<<<<<<<<<<<<
  *     '''
  *         display flag should only be set for debugging purposes:
  */
   __pyx_tuple__75 = PyTuple_Pack(2, __pyx_n_s_video_path, __pyx_n_s_display); if (unlikely(!__pyx_tuple__75)) __PYX_ERR(0, 435, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_tuple__75);
   __Pyx_GIVEREF(__pyx_tuple__75);
-  __pyx_codeobj__76 = (PyObject*)__Pyx_PyCode_New(2, 0, 0, 2, 0, CO_OPTIMIZED|CO_NEWLOCALS, __pyx_empty_bytes, __pyx_empty_tuple, __pyx_empty_tuple, __pyx_tuple__75, __pyx_empty_tuple, __pyx_empty_tuple, __pyx_kp_s_sit_stand_overall_pyx, __pyx_n_s_sit_stand_overall, 435, __pyx_empty_bytes); if (unlikely(!__pyx_codeobj__76)) __PYX_ERR(0, 435, __pyx_L1_error)
+  __pyx_codeobj__76 = (PyObject*)__Pyx_PyCode_New(2, 0, 0, 2, 0, CO_OPTIMIZED|CO_NEWLOCALS, __pyx_empty_bytes, __pyx_empty_tuple, __pyx_empty_tuple, __pyx_tuple__75, __pyx_empty_tuple, __pyx_empty_tuple, __pyx_kp_s_sit_stand_overall_pyx, __pyx_n_s_process_sit_stand, 435, __pyx_empty_bytes); if (unlikely(!__pyx_codeobj__76)) __PYX_ERR(0, 435, __pyx_L1_error)
   __Pyx_RefNannyFinishContext();
   return 0;
   __pyx_L1_error:;
@@ -37295,13 +37301,13 @@ if (!__Pyx_RefNanny) {
   /* "sit_stand_overall.pyx":435
  * #         print(f"Reason: {self.reason}")
  * 
- * cpdef sit_stand_overall(str video_path, bint display):             # <<<<<<<<<<<<<<
+ * cpdef process_sit_stand(str video_path, bint display):             # <<<<<<<<<<<<<<
  *     '''
  *         display flag should only be set for debugging purposes:
  */
-  __pyx_t_7 = __Pyx_CyFunction_New(&__pyx_mdef_17sit_stand_overall_33sit_stand_overall, 0, __pyx_n_s_sit_stand_overall, NULL, __pyx_n_s_sit_stand_overall, __pyx_d, ((PyObject *)__pyx_codeobj__76)); if (unlikely(!__pyx_t_7)) __PYX_ERR(0, 435, __pyx_L1_error)
+  __pyx_t_7 = __Pyx_CyFunction_New(&__pyx_mdef_17sit_stand_overall_33process_sit_stand, 0, __pyx_n_s_process_sit_stand, NULL, __pyx_n_s_sit_stand_overall, __pyx_d, ((PyObject *)__pyx_codeobj__76)); if (unlikely(!__pyx_t_7)) __PYX_ERR(0, 435, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_7);
-  if (PyDict_SetItem(__pyx_d, __pyx_n_s_sit_stand_overall, __pyx_t_7) < 0) __PYX_ERR(0, 435, __pyx_L1_error)
+  if (PyDict_SetItem(__pyx_d, __pyx_n_s_process_sit_stand, __pyx_t_7) < 0) __PYX_ERR(0, 435, __pyx_L1_error)
   __Pyx_DECREF(__pyx_t_7); __pyx_t_7 = 0;
 
   /* "sit_stand_overall.pyx":3

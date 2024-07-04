@@ -1,14 +1,37 @@
+# Use an official Python runtime as a parent image
+FROM python:3.10-slim
 
-FROM python:3.11-slim
+# Install build dependencies
+RUN apt-get update && apt-get install -y \
+    build-essential \
+    python3-dev \
+    cython3 \
+    libatlas-base-dev \
+    libgl1-mesa-glx \ 
+    libglib2.0-0
+    # install the OpenGL library
+    #install the GLib library
 
-WORKDIR .
 
-COPY requirements.txt ./app
-RUN pip install --no-cache-dir --upgrade -r requirements.txt
+# Set the working directory in the container
+WORKDIR /app
 
-COPY . ./app
+# Copy the requirements.txt file into the container at /app
+COPY ../requirements.txt ./
 
+# Install any needed packages specified in requirements.txt
+RUN pip install -r requirements.txt
+
+# Copy the server directory contents into the container at /app
+COPY . .
+
+# COPY ./app/algorithms/sit_stand_overall.so ./app/algorithms/
+COPY app/routers/sit_stand_overall.cpython-310-darwin.so /app/app/routers/
+
+ENV PYTHONPATH=/app
+
+# Make port 80 available to the world outside this container
 EXPOSE 80
 
-
-CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "80"]
+# Run app/main.py when the container launches
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "80"]

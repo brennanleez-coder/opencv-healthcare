@@ -5,7 +5,8 @@ import threading
 import uuid
 import os
 from app.utils.logger import Logger
-from app.algorithms import sit_stand_overall as sso
+import app.routers.sit_stand_overall as sso
+
 
 router = APIRouter()
 logger_instance = Logger()
@@ -16,7 +17,7 @@ result_queues = {}
 
 def thread_function(video_path, queue, logger):
     try:
-        result = sso.sit_stand_overall(video_path, False)
+        result = sso.process_sit_stand(video_path, False)
         queue.put(result)
     except Exception as e:
         logger.error(f"Error processing video: {e}")

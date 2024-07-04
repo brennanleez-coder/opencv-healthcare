@@ -140,3 +140,139 @@ use the following command to run the server locally:
 ```bash
     fastapi dev server/app/main
 ```
+Build fastapi app as docker image
+```bash
+docker build -t empower-vision-be -f Dockerfile .
+```
+Run the docker image
+```bash
+docker run -d --name empower-vision-be-container -p 80:80 empower-vision-be
+```
+
+useful docker commands:
+remove and stop all containers
+```bash
+docker stop $(docker ps -q) && docker rm $(docker ps -a -q)
+```
+
+Compiling for linux so file
+I am using a mac environment so the .so file generated is for darwin. This causes issues when running the .so file in the docker container.
+
+To compile for linux, I created another docker container just to compile and then copy the .so file locally. Then move it to my fastapi app
+    
+    ```bash
+        docker build -t cython_linux .
+        docker run -d --name cython_container -p 80:80 empower-vision-be
+    ```
+    
+    ```bash
+        docker exec -it empower-vision-be-container /bin/bash
+    ```
+Once the sit_stand_overall.cpython-310-x86_64-linux-gnu.so is created, move it to the fastapi app
+    
+    ```bash
+        cp /usr/src/app/sit_stand_algorithm.cpython-310-darwin.so /usr/src/app/server/app/sit_stand_algorithm.cpython-310-linux-x86_64.so
+    ```
+    
+    ```bash
+        exit
+    ```
+    
+    ```bash
+        docker cp empower-vision-be-container:/usr/src/app/server/app/sit_stand_algorithm.cpython-310-linux-x86_64.so .
+    ```
+    
+    ```bash
+        docker stop empower-vision-be-container
+    ```
+    
+    ```bash
+        docker rm empower-vision-be-container
+    ```
+    
+    ```bash
+        docker rmi empower-vision-be
+    ```
+    
+    ```bash
+        docker build -t empower-vision-be .
+    ```
+    
+    ```bash
+        docker run -d --name empower-vision-be-container -p 80:80 empower-vision-be
+    ```
+    
+    ```bash
+        docker exec -it empower-vision-be-container /bin/bash
+    ```
+    
+    ```bash
+        cd server/app
+    ```
+    
+    ```bash
+        fastapi dev main
+    ```
+    
+    ```bash
+        exit
+    ```
+    
+    ```bash
+        docker stop empower-vision-be-container
+    ```
+    
+    ```bash
+        docker rm empower-vision-be-container
+    ```
+    
+    ```bash
+        docker rmi empower-vision-be
+    ```
+    
+    ```bash
+        docker build -t empower-vision-be .
+    ```
+    
+    ```bash
+        docker run -d --name empower-vision-be-container -p 80:80 empower-vision-be
+    ```
+    
+    ```bash
+        docker exec -it empower-vision-be-container /bin/bash
+    ```
+    
+    ```bash
+        cd server/app
+    ```
+    
+    ```bash
+        fastapi dev main
+    ```
+    
+    ```bash
+        exit
+    ```
+    
+    ```bash
+        docker stop empower-vision-be-container
+    ```
+    
+    ```bash
+        docker rm empower-vision-be-container
+    ```
+    
+    ```bash
+        docker rmi empower-vision-be
+    ```
+    
+    ```bash
+        docker build -t empower-vision-be .
+    ```
+    
+    ```bash
+        docker run -d --name empower-vision-be-container -p 80:80 empower-vision-be
+    ```
+    
+    ```bash
+        docker
