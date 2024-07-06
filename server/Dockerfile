@@ -31,7 +31,7 @@ COPY app/routers/sit_stand_overall.cpython-310-darwin.so /app/app/routers/
 ENV PYTHONPATH=/app
 
 # Make port 80 available to the world outside this container
-EXPOSE 80
+EXPOSE 8080
 
 # Run app/main.py when the container launches
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "80"]
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8080"]
