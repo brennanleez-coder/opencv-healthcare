@@ -1,5 +1,5 @@
 # Use an official Python runtime as a parent image
-FROM python:3.10-slim
+FROM tiangolo/uvicorn-gunicorn:python3.10-slim
 
 # Install build dependencies
 RUN apt-get update && apt-get install -y \
@@ -24,9 +24,6 @@ RUN pip install -r requirements.txt
 
 # Copy the server directory contents into the container at /app
 COPY . .
-
-# COPY ./app/algorithms/sit_stand_overall.so ./app/algorithms/
-COPY app/routers/sit_stand_overall.cpython-310-darwin.so /app/app/routers/
 
 ENV PYTHONPATH=/app
 

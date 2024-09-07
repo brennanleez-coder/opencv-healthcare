@@ -3,11 +3,10 @@
 
 git pull origin main
 
-docker build -t empower-vision-be .
+docker build --no-cache -t empower-vision-backend .
 
+docker tag empower-vision-backend brennanlee/empower-vision-backend:latest
 
-docker tag empower-vision brennanlee/empower-vision-be:latest
-
-docker push brennanlee/empower-vision-be:latest
+docker push brennanlee/empower-vision-backend:latest
 
 echo "Docker image updated and pushed to Docker Hub successfully."
