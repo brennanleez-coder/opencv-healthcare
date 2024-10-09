@@ -158,39 +158,42 @@ docker stop $(docker ps -q) && docker rm $(docker ps -a -q)
 Compiling for linux so file
 I am using a mac environment so the .so file generated is for darwin. This causes issues when running the .so file in the docker container.
 
+JUST USE THIS COMMAND
+CC=x86_64-linux-musl-gcc python3 setup.py build_ext --inplace
+
 To compile for linux, I created another docker container just to compile and then copy the .so file locally. Then move it to my fastapi app
     
-    ```bash
-        docker build -t cython_linux .
-        docker run -d --name cython_container -p 80:80 empower-vision-be
-    ```
-    
-    ```bash
-        docker exec -it empower-vision-be-container /bin/bash
-    ```
+```bash
+    docker build --no-cache -t cython_linux_build .
+    docker run -d --name cython_linux_build_container -p 80:80 cython_linux_build
+```
+Enter the container
+```bash
+    docker exec -it cython_linux_build_container /bin/bash
+```
 Once the sit_stand_overall.cpython-310-x86_64-linux-gnu.so is created, move it to the fastapi app
     
-    ```bash
-        cp /usr/src/app/sit_stand_algorithm.cpython-310-darwin.so /usr/src/app/server/app/sit_stand_algorithm.cpython-310-linux-x86_64.so
-    ```
+```bash
+    cp /usr/src/app/sit_stand_algorithm.cpython-310-darwin.so /usr/src/app/server/app/sit_stand_algorithm.cpython-310-linux-x86_64.so
+```
     
-    ```bash
-        exit
-    ```
+```bash
+    exit
+```    
+```bash
+    docker cp empower-vision-be-container:/usr/src/app/server/app/sit_stand_algorithm.cpython-310-linux-x86_64.so .
+```
+
+```bash
+    docker stop empower-vision-be-container
+```
+
+```bash
+    docker rm empower-vision-be-container
+```
+
+```bash
+    docker rmi empower-vision-be
+```
     
-    ```bash
-        docker cp empower-vision-be-container:/usr/src/app/server/app/sit_stand_algorithm.cpython-310-linux-x86_64.so .
-    ```
-    
-    ```bash
-        docker stop empower-vision-be-container
-    ```
-    
-    ```bash
-        docker rm empower-vision-be-container
-    ```
-    
-    ```bash
-        docker rmi empower-vision-be
-    ```
-    
+

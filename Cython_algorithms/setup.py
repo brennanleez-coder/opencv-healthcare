@@ -10,6 +10,6 @@ include_dirs = [
 ]
 
 setup(
-    ext_modules=cythonize("/Users/brennanlee/Desktop/opencv-healthcare/Cython_algorithms/sit_stand_overall.pyx"),
+    ext_modules=cythonize("/Users/brennanlee/Desktop/opencv-healthcare/Cython_algorithms/tug_overall.pyx"),
     include_dirs=include_dirs,    
 )

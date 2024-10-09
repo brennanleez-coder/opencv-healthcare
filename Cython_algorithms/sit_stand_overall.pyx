@@ -1,5 +1,5 @@
 
-
+from scipy.stats import circmean, circstd
 # angle_calculation.pyx
 from libc.math cimport atan2, fabs, pi
 
@@ -268,7 +268,7 @@ cpdef dict calculate_and_draw_joint_displacement(
     double real_time
 ):
     logging.info(
-        "========================= Optical flow results ========================="
+        "--- Displacement Information ---"
     )
     cdef tuple joint_names = ("HIP", "KNEE", "ANKLE")  # Names of the joints
     cdef double[:] prev_hip = prev_points[0]
@@ -291,6 +291,9 @@ cpdef dict calculate_and_draw_joint_displacement(
                 f"{joint_name} Displacement: {displacement:.2f} px (from {display_x_and_y_from_point(prev_point)} to {display_x_and_y_from_point(curr_point)})"
             )
             joint_displacement_history[joint_name].append((real_time, displacement))
+    logging.info(
+        "--- End of Displacement Information ---"
+    )
     return joint_displacement_history
 
 
@@ -385,6 +388,8 @@ cpdef void display_timer(cnp.ndarray[cnp.uint8_t, ndim=3] image, double elapsed_
         2,
         cv2.LINE_AA,
     )
+cpdef double calculate_magnitude(double x1, double y1, double x2, double y2):
+    return sqrt((x2 - x1) ** 2 + (y2 - y1) ** 2)
 
 from mediapipe.python.solutions import drawing_utils as mp_drawing
 from mediapipe.python.solutions import pose as mp_pose
@@ -473,7 +478,7 @@ cpdef process_sit_stand(str video_path, bint display):
         }
         list max_angles = []
         int frames_after_start = 0
-        double frame_rate = -1 # Uninitialised state
+        double fps = -1 # Uninitialised state
         double frame_time = -1 # Uninitialised state
         bint timer_started = False
         double start_time = -1 # Uninitialised state
@@ -484,13 +489,31 @@ cpdef process_sit_stand(str video_path, bint display):
         double rep_duration = -1
         double last_rep_end_time = 0  # To store the end time of the last repetition
         list violations = []
+        cnp.ndarray previous_gray = None
+        cnp.ndarray previous_keypoints = None
+        list keypoints_over_time = []
+        dict keypoint_motion = {}
+    # Optical Flow post processing variables
+    cdef:
+        dict keypoint_mean_magnitudes = {}
+        dict keypoint_std_devs = {}
+        dict keypoint_circular_mean = {}
+        dict keypoint_circular_std = {}
+        double total_sum
+        int j
+        int n_frames = -1
+        list keypoints_names = []
+        double[:] std_devs_values
+        double[:] circ_mean_values
+        double[:] circ_std_values
+        
     # Create a 2D Cython array for the keypoints
     try:
         cap = cv2.VideoCapture(video_path)
         if not cap.isOpened():
             raise ValueError("Error: Cannot open video file.")
-        frame_rate = cap.get(cv2.CAP_PROP_FPS)
-        frame_time = 1 / frame_rate
+        fps = cap.get(cv2.CAP_PROP_FPS)
+        frame_time = 1 / fps
     except ValueError as e:
         logging.error(e)
         return
@@ -501,26 +524,65 @@ cpdef process_sit_stand(str video_path, bint display):
                 logging.warning("No frame captured from the video source.")
                 break
             frame_height, frame_width, _ = frame.shape
+            frame_number = cap.get(cv2.CAP_PROP_POS_FRAMES)
+            logging.info(f"============================ Processing frame {frame_number} ============================")
             
             image = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
             image.flags.writeable = False
             results = pose.process(image)
             image.flags.writeable = True
             image = cv2.cvtColor(image, cv2.COLOR_RGB2BGR)
+            current_gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+
 
             if timer_started:
-                elapsed_time = get_real_time_from_frames(frames_after_start, frame_rate)
+                elapsed_time = get_real_time_from_frames(frames_after_start, fps)
                 frames_after_start += 1
+                if previous_gray is not None and previous_keypoints is not None:
+                    logging.info(f"--- Optical Flow ---")
+                    p1, st, err = cv2.calcOpticalFlowPyrLK(previous_gray, current_gray, previous_keypoints, None)
+                    for i in range(p1.shape[0]):
+                        new_x, new_y = p1[i,0,0], p1[i,0,1]
+                        old_x, old_y = previous_keypoints[i,0,0], previous_keypoints[i,0,1]
+                        motion_magnitude = calculate_magnitude(new_x, new_y, old_x, old_y)
+                        motion_angle = atan2(new_y - old_y, new_x - old_x)
+                        logging.info(f"{list(keypoints.keys())[i]}: {motion_magnitude}, {motion_angle}")
+                        keypoint_motion[list(keypoints.keys())[i]] = (motion_magnitude, motion_angle)
+
+                        if display:
+                            cv2.arrowedLine(
+                                frame,
+                                (int(old_x), int(old_y)),
+                                (int(new_x), int(new_y)),
+                                (0, 255, 0),
+                                2,
+                                tipLength=0.5
+                            )
+                    keypoints_over_time.append(keypoint_motion)
+                    keypoint_motion = {}
+                    previous_keypoints = p1
+                else:
+                    previous_keypoints = np.array([[kp.x * frame.shape[1], kp.y * frame.shape[0]] for kp in keypoints.values()], dtype=np.float32).reshape(-1, 1, 2)
+                previous_gray = current_gray
+                logging.info(f"--- End of Optical Flow ---")
             
             # Process the frame
             if results.pose_landmarks:
                 landmarks = results.pose_landmarks.landmark
-
+                
+                keypoints = {
+                    "LEFT_HIP": landmarks[mp_pose.PoseLandmark.LEFT_HIP.value],
+                    "LEFT_KNEE": landmarks[mp_pose.PoseLandmark.LEFT_KNEE.value],
+                    "LEFT_ANKLE": landmarks[mp_pose.PoseLandmark.LEFT_ANKLE.value],
+                    "LEFT_SHOULDER": landmarks[mp_pose.PoseLandmark.LEFT_SHOULDER.value],
+                    "LEFT_WRIST": landmarks[mp_pose.PoseLandmark.LEFT_WRIST.value],
+                    "LEFT_ELBOW": landmarks[mp_pose.PoseLandmark.LEFT_ELBOW.value],
+                }
                 # Extract coordinates multiplied by frame dimensions for optical flow and angle calculation
                 hip, knee, ankle, shoulder, wrist, elbow = get_landmark_coordinates(
                     landmarks, frame_width, frame_height, "LEFT"
                 )
-                time_after_start = get_real_time_from_frames(frames_after_start, frame_rate)
+                time_after_start = get_real_time_from_frames(frames_after_start, fps)
                 joint_history["HIP"].append((time_after_start, hip))
                 joint_history["KNEE"].append((time_after_start, knee))
                 joint_history["ANKLE"].append((time_after_start, ankle))
@@ -615,7 +677,44 @@ cpdef process_sit_stand(str video_path, bint display):
         cap.release()
         cv2.destroyAllWindows()
         summarise_results(counter, elapsed_time, rep_durations, violations, max_angles)
+        
+        n_frames = len(keypoints_over_time)
+        keypoints_names= list(keypoints_over_time[0].keys())
+        std_devs_values = np.zeros(n_frames, dtype=np.float64)
+        circ_mean_values = np.zeros(n_frames, dtype=np.float64)
+        circ_std_values = np.zeros(n_frames, dtype=np.float64)
+        logging.info(f"--- Sanity Check ---")
+        logging.info(f"Number of frames: {frames_after_start}")
+        logging.info(f"Number of keypoints: {len(keypoints_names)}")
+        logging.info(f"--- End of Sanity Check ---")
+        logging.info(f"--- Key Points Information ---")
+
+        if keypoints_over_time not in [None, []]:
+            # Mean magnitudes
+            for keypoint in keypoints_names:
+                total_sum = 0
+                for j in range(n_frames):
+                    total_sum += keypoints_over_time[j][keypoint][0]  # Sum the first element for each frame
+                    std_devs_values[j] = keypoints_over_time[j][keypoint][0]
+                    circ_mean_values[j] = keypoints_over_time[j][keypoint][1]
+                    circ_std_values[j] = keypoints_over_time[j][keypoint][1]
+                logging.info(f"---- {keypoint} ----")
+                keypoint_mean_magnitudes[keypoint] = total_sum / n_frames
+                logging.info(f"Mean magnitude for {keypoint}: {keypoint_mean_magnitudes[keypoint]}")
+                keypoint_std_devs[keypoint] = np.std(std_devs_values)
+                logging.info(f"Standard deviation for {keypoint}: {keypoint_std_devs[keypoint]}")
+                keypoint_circular_mean[keypoint] = circmean(circ_mean_values, high=np.pi, low=-np.pi)
+                logging.info(f"Circular mean for {keypoint}: {keypoint_circular_mean[keypoint]}")
+                keypoint_circular_std[keypoint] = circstd(circ_std_values, high=np.pi, low=-np.pi)
+                logging.info(f"Circular standard deviation for {keypoint}: {keypoint_circular_std[keypoint]}")
+        else:
+            keypoint_mean_magnitudes = {}
+            keypoint_std_devs = {}
+            keypoint_circular_mean = {}
+            keypoint_circular_std = {}
+            logging.info("No keypoints detected")
+            logging.info(f"--- End of Key Points Information ---")
 
         return "5 Sit Stand", determine_failure(
             elapsed_time, counter, False
-        ),counter, elapsed_time, rep_durations, violations, max_angles
+        ),counter, elapsed_time, rep_durations, violations, max_angles, keypoint_mean_magnitudes, keypoint_std_devs, keypoint_circular_mean, keypoint_circular_std
