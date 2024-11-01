@@ -10,6 +10,6 @@ include_dirs = [
 ]
 
 setup(
-    ext_modules=cythonize("gait_speed_walk_overall.pyx"),
+    ext_modules=cythonize("sit_stand_overall.pyx"),
     include_dirs=include_dirs,    
 )

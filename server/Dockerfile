@@ -28,7 +28,7 @@ COPY . .
 ENV PYTHONPATH=/app
 
 # Make port 80 available to the world outside this container
-EXPOSE 8080
+EXPOSE 8000
 
 # Run app/main.py when the container launches
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8080"]
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]

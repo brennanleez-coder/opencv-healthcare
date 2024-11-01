@@ -28105,7 +28105,7 @@ static PyObject *__pyx_f_23gait_speed_walk_overall_process_test(PyObject *__pyx_
  *         dict keypoint_circular_mean = {}
  *         dict keypoint_circular_std = {}             # <<<<<<<<<<<<<<
  *         double strides_per_second
- *         int j, keypoint_count
+ *         int j
  */
   __pyx_t_13 = __Pyx_PyDict_NewPresized(0); if (unlikely(!__pyx_t_13)) __PYX_ERR(0, 413, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_13);
@@ -28113,7 +28113,7 @@ static PyObject *__pyx_f_23gait_speed_walk_overall_process_test(PyObject *__pyx_
   __pyx_t_13 = 0;
 
   /* "gait_speed_walk_overall.pyx":417
- *         int j, keypoint_count
+ *         int j
  *         double total_sum
  *         int n_frames = len(keypoints_over_time)             # <<<<<<<<<<<<<<
  *         double[:] std_devs_values = np.zeros(n_frames, dtype=np.float64)

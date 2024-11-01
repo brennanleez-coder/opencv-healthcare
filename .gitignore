@@ -13,3 +13,5 @@ build/
 /server/logs/*
 
 .DS_Store
+
+cocoapi/

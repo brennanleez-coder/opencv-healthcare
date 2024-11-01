@@ -20,6 +20,7 @@ cd server
 ```
 
 ```bash
-docker build -t empower-vision-be .
-docker run -d --name empower-vision-be-container -p 80:80 empower-vision-be
+docker build -t frailty-vision-be .
+docker run -d -p 8000:8000 frailty-vision-be
+
 ```

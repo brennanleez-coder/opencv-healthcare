@@ -3,7 +3,7 @@ import mediapipe as mp
 cimport numpy as cnp
 import numpy as np
 import logging
-from libc.math cimport sqrt, atan2
+from libc.math cimport sqrt, atan2, fabs, pi
 from scipy.stats import circmean, circstd
 cv2.setNumThreads(1)
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -26,6 +26,31 @@ cdef class Point:
         return self._y
     def __str__(self):
         return f'({self._x}, {self._y})'
+
+cpdef calculate_angle(Point a, Point b, Point c):
+    """
+    Calculate the angle formed at point 'b' by the line segments a-b and b-c.
+    `b` is the midpoint of `a` and `c` (e.g., left hip, left knee, and left ankle).
+
+    Parameters:
+    a, b, c (double[:]): Coordinates of the points.
+
+    Returns:
+    double: The angle in degrees.
+    """
+
+    cdef:
+        double radian_a, radian_b, angle
+
+    # Using libc's atan2 for computation
+    radian_a = atan2(c.y - b.y, c.x - b.x)
+    radian_b = atan2(a.y - b.y, a.x - b.x)
+    angle = fabs((radian_a - radian_b) * 180.0 / pi)
+    
+    if angle > 180.0:
+        angle = 360.0 - angle
+
+    return angle
 
 cpdef calculate_distance(double[:] p1, double[:] p2):
     """
@@ -99,7 +124,7 @@ cpdef dict get_keypoints(landmarks):
     return keypoints
 
 # Declare types for input arguments and constants for better performance
-cpdef bint should_start_timer(double hip_angle):
+cpdef bint should_start_timer(double hip_angle, knee_angle):
     cdef double threshold_angle = 100.0
     # cdef double hip_thresh = 3.0
     # cdef double knee_thresh = 3.0
@@ -108,12 +133,11 @@ cpdef bint should_start_timer(double hip_angle):
 
     # Determine whether the hip angle is below the threshold
     hip_trigger = hip_angle < threshold_angle
-
-    # Logging statement (still uses Python logging)
+    knee_trigger = knee_angle > threshold_angle
     logging.info(f"{'Timer started' if hip_trigger else 'Timer not started'} - hip_angle: {hip_angle}")
 
     # Return the hip_trigger (currently ignoring displacements based on your commented code)
-    return hip_trigger
+    return hip_trigger or knee_trigger
 
 
 cdef enum Phase:
@@ -175,9 +199,9 @@ cpdef process_test(
         list keypoints_over_time = []
         double fps = -1
         int frame_counter = 0
-        int confirm_frames = 10
 
         # Sit Stand Variables
+        int sit_stand_stage = -1
         object stage = None
         int confirm_frames = 5
         int stage_counter = 0
@@ -251,215 +275,325 @@ cpdef process_test(
             keypoints = get_keypoints(landmarks)
 
             logging.info(f"--- Misc --- ")
+            logging.info(f"--- Angles ---")
+            logging.info(f"--- Hip and Knee Angles ---")
+            hip_angle = calculate_angle(
+                    keypoints["RIGHT_SHOULDER"],
+                    keypoints["RIGHT_HIP"],
+                    keypoints["RIGHT_KNEE"],
+                )
+            logging.info(f"Right hip angle: {hip_angle}")
+            knee_angle = calculate_angle(
+                keypoints["RIGHT_HIP"],
+                keypoints["RIGHT_KNEE"],
+                keypoints["RIGHT_ANKLE"],
+            )
+            logging.info(f"Right knee angle: {knee_angle}")
+            logging.info(f"--- End of Angles ---")
+
+            logging.info(f"--- Central Points ---")
             central_ankle = calculate_central_point(keypoints["LEFT_ANKLE"], keypoints["RIGHT_ANKLE"])
             logging.info(f"Central ankle point: {central_ankle}")
+            central_point = calculate_central_point(
+                keypoints["LEFT_HIP"], keypoints["RIGHT_HIP"]
+            )
+            logging.info(f"Central point: {central_point}")
+            if not timer_started:
+                start_position = central_point
+                logging.info(f"Timer not started - Start position: {start_position}")
+            logging.info(f"Body Central point: {central_point}")
+            logging.info(f"--- End of Central Points ---")
 
             estimated_height_in_px = calculate_vertical_distance(keypoints["NOSE"], central_ankle, frame.shape[0])
-
             if pixels_to_cm_ratio == 0:
                 pixels_to_cm_ratio = estimated_height_in_px / person_height_in_cm
                 logging.info(f"Pixels to cm ratio: {pixels_to_cm_ratio} is set")
+            if sit_stand_stage == -1:
+                sit_stand_stage = 1 if knee_angle > up_stage_threshold_angle else 0
+                logging.info(f"Initial sit_stand stage: {sit_stand_stage}")
 
-            central_point = calculate_central_point(keypoints["LEFT_HIP"], keypoints["RIGHT_HIP"])
-            logging.info(f"Central point: {central_point}")
-
-            if central_point is not None and not is_start_line_set:
-                frame_counter +=1
-                if frame_counter >= confirm_frames:
-                    is_start_line_set = True
-                    start_line = max(keypoints["LEFT_TOE"].x, keypoints["RIGHT_TOE"].x) + start_line_offset
-                    logging.info(f"Start line set at X: {start_line}")
-            
-            if debug and is_start_line_set:
-                # Convert normalized start line X position to pixel coordinates
-                start_line_pixel_x = int(start_line) * frame.shape[1]
-
-                cv2.line(
-                    frame,
-                    (start_line_pixel_x, 0),
-                    (start_line_pixel_x, frame.shape[0]),
-                    (255, 0, 0),  # Blue color for the start line
-                    2,
-                )
-                # annotate the start line with the words start line
+            if debug:
                 cv2.putText(
-                    frame,
-                    "Start Line",
-                    (start_line_pixel_x, 30),
-                    cv2.FONT_HERSHEY_SIMPLEX,
-                    1,
-                    (255, 0, 0),
-                    2,
-                    cv2.LINE_AA,
-                )
-            logging.info(f"--- End of Misc ---")
+                            frame,
+                            f"Phase: {current_phase}",
+                            (starting_x, starting_y),  # Starting position
+                            cv2.FONT_HERSHEY_SIMPLEX,
+                            1,
+                            (0, 255, 0),  # Green
+                            2,
+                            cv2.LINE_AA,
+                        )
 
-            if not timer_started and is_start_line_set:
-                if max(keypoints["LEFT_TOE"].x, keypoints["RIGHT_TOE"].x) >= start_line:
-                    start_position = central_point
-                    start_frame_id = current_frame_id
-                    timer_started = True
-                    logging.info(f"Timer started at frame {start_frame_id}")
-
-            if timer_started:
-                distance_walked = calculate_horizontal_distance(start_position, central_point, frame.shape[1]) / pixels_to_cm_ratio
-                logging.info(f"Distance walked: {distance_walked} cm")
-
-                if distance_walked >= distance_required_in_cm:
-                    end_frame_id = current_frame_id
-                    logging.info(
-                        f"Distance: {distance_required_in_cm} cm is completed at frame {end_frame_id} - {distance_walked} cm"
-                    )
-                    break
-            # Display timer and distance
+            
+            # Main Processing when timer has started
             if timer_started and start_frame_id is not None:
+                logging.info(f"Timer started at frame: {start_frame_id}")
                 elapsed_time = (current_frame_id - start_frame_id) / fps
-                if end_frame_id is not None:
-                    distance_walked = (
-                        calculate_horizontal_distance(start_position, central_point, frame.shape[1])
-                        / pixels_to_cm_ratio
-                    )
-                    # elapsed_time = (end_frame_id - start_frame_id) / fps
+                logging.info(f"Distance walked: {distance_walked} cm")
+                if end_frame_id is None:
+                    if walk_back_start_position is not None and (current_phase == Phase.WALK_BACK or current_phase == Phase.SIT):
+                        logging.info(f"Walk back start position: {walk_back_start_position} - Central point: {central_point}")
+                        distance_walked += calculate_horizontal_distance(
+                            walk_back_start_position, central_point, frame.shape[1]
+                        ) / pixels_to_cm_ratio
+                        walk_back_start_position = central_point
+                    else:
+                        distance_walked = calculate_horizontal_distance(start_position, central_point, frame.shape[1])/ pixels_to_cm_ratio
+                    
+                    if initial_foot_slope is None:
+                        # log right ankle and right toe
+                        initial_foot_slope = calculate_foot_slope(keypoints["RIGHT_ANKLE"], keypoints["RIGHT_TOE"]
+                        )
+                        right_slope = initial_foot_slope
+                        logging.info(f"Initial foot slope: {initial_foot_slope}")
+                    else:
+                        right_slope = calculate_foot_slope(keypoints["RIGHT_ANKLE"], keypoints["RIGHT_TOE"])
+                        logging.info(f"Right foot slope: {right_slope}")
+                    # Detect foot contact with the ground
+                    if abs(right_slope) < initial_foot_slope:
+                        logging.info(f"Right foot is parallel to the ground")
+                        if not foot_contact_start and not reset_needed:
+                            # First ground contact
+                            foot_contact_start = True
+                            foot_off_ground = False
+                            initial_contact_position = keypoints["RIGHT_TOE"]
+                            logging.info("First ground contact detected")
+
+                        elif foot_off_ground and reset_needed:
+                            # Second ground contact, calculate stride
+                            final_contact_position = keypoints["RIGHT_TOE"]
+                            stride_length = (
+                                calculate_horizontal_distance(
+                                    final_contact_position,
+                                    initial_contact_position,
+                                    frame.shape[1],
+                                )
+                                / pixels_to_cm_ratio
+                            )
+                            strides.append(stride_length)
+                            logging.info(f"Stride length recorded: {stride_length} cm")
+
+                            # Reset flags for the next stride detection
+                            reset_needed = False
+                            foot_contact_start = False
+                            foot_off_ground = False
+                            initial_contact_position = keypoints["RIGHT_TOE"]
+                    else:
+                        # Foot off ground
+                        if foot_contact_start and not reset_needed:
+                            foot_off_ground = True
+                            logging.info("Foot is off the ground")
+
+                            # Allow reset to detect the next stride
+                            reset_needed = True
+
+                    if debug:
+                        cv2.putText(
+                            frame,
+                            f"Right foot slope: {right_slope}",
+                            (starting_x, starting_y + 3 * line_height),  # Offset by 3 * line_height
+                            cv2.FONT_HERSHEY_SIMPLEX,
+                            1,
+                            (255, 255, 0),  # Yellow
+                            2,
+                            cv2.LINE_AA,
+                        )
+                        cv2.putText(
+                            frame,
+                            f"Foot touching ground: {'YES' if foot_contact_start and abs(right_slope) < 0.9 else 'NO'}",
+                            (starting_x, starting_y + 4 * line_height),  # Offset by 4 * line_height
+                            cv2.FONT_HERSHEY_SIMPLEX,
+                            1,
+                            (255, 255, 0),  # Yellow
+                            2,
+                            cv2.LINE_AA,
+                        )
+                    # Calculate motion vectors using optical flow
+                    logging.info(f"--- Optical Flow ---")
+                    if timer_started and previous_gray is not None and previous_keypoints is not None:
+                        p1, st, err = cv2.calcOpticalFlowPyrLK(previous_gray, current_gray, previous_keypoints, None)
+
+                        for i in range(p1.shape[0]):
+                            new_x, new_y = p1[i,0,0], p1[i,0,1]
+                            old_x, old_y = previous_keypoints[i,0,0], previous_keypoints[i,0,1]
+                            motion_magnitude = calculate_magnitude(new_x, new_y, old_x, old_y)
+                            motion_angle = atan2(new_y - old_y, new_x - old_x)
+                            logging.info(f"{list(keypoints.keys())[i]}: {motion_magnitude}, {motion_angle}")
+                            keypoint_motion[list(keypoints.keys())[i]] = (motion_magnitude, motion_angle)
+
+                            if debug:
+                                cv2.arrowedLine(
+                                    frame,
+                                    (int(old_x), int(old_y)),
+                                    (int(new_x), int(new_y)),
+                                    (0, 255, 0),
+                                    2,
+                                    tipLength=0.5
+                                )
+                        keypoints_over_time.append(keypoint_motion)
+                        keypoint_motion = {}
+                        previous_keypoints = p1
+                    else:
+                        previous_keypoints = np.array([[kp.x * frame.shape[1], kp.y * frame.shape[0]] for kp in keypoints.values()], dtype=np.float32).reshape(-1, 1, 2)
+                    previous_gray = current_gray
+                    logging.info(f"--- End of Optical Flow ---")
                 if debug:
                     cv2.putText(
                         frame,
                         f"Time: {elapsed_time:.2f} sec",
-                        (10, 30),
+                        (starting_x, starting_y + line_height),  # Offset by line_height
                         cv2.FONT_HERSHEY_SIMPLEX,
                         1,
-                        (0, 255, 0),
+                        (0, 255, 0),  # Green
                         2,
                         cv2.LINE_AA,
                     )
                     cv2.putText(
                         frame,
                         f"Distance: {distance_walked:.2f} cm",
-                        (10, 70),
+                        (starting_x, starting_y + 2 * line_height),  # Offset by 2 * line_height
                         cv2.FONT_HERSHEY_SIMPLEX,
                         1,
-                        (0, 255, 0),
+                        (0, 255, 0),  # Green
                         2,
                         cv2.LINE_AA,
                     )
             else:
                 if debug:
-                    cv2.putText(
-                        frame,
-                        f"Timer not started",
-                        (10, 30),
-                        cv2.FONT_HERSHEY_SIMPLEX,
-                        1,
-                        (0, 0, 255),
-                        2,
-                        cv2.LINE_AA,
-                    )
+                    cv2.putText(frame,f"Timer not started",(10, 30),cv2.FONT_HERSHEY_SIMPLEX,1,(0, 0, 255),2,cv2.LINE_AA,)
+
             
-            if not timer_started and start_position is None:
-                logging.info("Waiting for the person to start walking")
+            if current_phase == Phase.STAND and not timer_started:
+                logging.info(f"---Timer not started - Expected Phase: Stand - Actual: {current_phase}---")
+                if not timer_started and should_start_timer(hip_angle, knee_angle):
+                    timer_started = True
+                    start_frame_id = current_frame_id
+                    logging.info(f"Timer started - Start frame set - frame {current_frame_id}")
 
-            logging.info(f"--- Optical Flow ---")
-            if timer_started and previous_gray is not None and previous_keypoints is not None:
-                p1, st, err = cv2.calcOpticalFlowPyrLK(previous_gray, current_gray, previous_keypoints, None)
+            if (timer_started and sit_stand_stage == 0):
+                if stand_start_frame == -1:
+                    stand_start_frame = current_frame_id  # Only set once per rep to avoid resetting
+                    logging.info(f"Stand up phase started at frame: {stand_start_frame}")
+                    
+            # Stand Phase processing
+            # Transition from DOWN to UP
+            if (current_phase == Phase.STAND and
+                timer_started and
+                sit_stand_stage == 0 and
+                knee_angle > up_stage_threshold_angle
+                ):
+                logging.info(f"---Expected Phase: Stand - Actual: {current_phase}---")
+                stage_counter += 1
+                logging.info(f"Stage counter: {stage_counter}")
+                if stage_counter >= confirm_frames:
+                    logging.info(f"Stage is confirmed. Transitioning to up stage")
+                    sit_stand_stage = 1
+                    stage_counter = 0
+                    stand_end_frame = current_frame_id
+                    logging.info(f"Stand up phase completed at frame: {stand_end_frame}")
+                    walk_to_start_frame = current_frame_id
+                    logging.info(f"Walk to phase started at frame: {walk_to_start_frame}")
+                    returned_current_phase = begin_phase(Phase.STAND,Phase.WALK_TO)
+                    current_phase = returned_current_phase
+                logging.info(f"------")
+                
+            # Walk To Phase processing
+            if current_phase == Phase.WALK_TO and timer_started:
+                logging.info(f"---Expected Phase: Walk To - Actual: {current_phase}---")
+                # Theres nothing much to do, just track the end of the walk_to_phase
+                if walk_to_start_frame == -1:
+                    walk_to_start_frame = current_frame_id
+                current_distance = distance_walked
+                logging.info(f"Total Distance in walk_to_phase: {current_distance}")
+                
+                # Transition from WALK_TO to TURN
+                if walk_to_previous_distance > current_distance:
+                    stage_counter += 1
+                else:
+                    stage_counter = 0  # Reset if the condition isn't met
 
-                for i in range(p1.shape[0]):
-                    new_x, new_y = p1[i,0,0], p1[i,0,1]
-                    old_x, old_y = previous_keypoints[i,0,0], previous_keypoints[i,0,1]
-                    motion_magnitude = calculate_magnitude(new_x, new_y, old_x, old_y)
-                    motion_angle = atan2(new_y - old_y, new_x - old_x)
-                    logging.info(f"{list(keypoints.keys())[i]}: {motion_magnitude}, {motion_angle}")
-                    keypoint_motion[list(keypoints.keys())[i]] = (motion_magnitude, motion_angle)
+                logging.info(f"Walk to previous distance: {walk_to_previous_distance}, current distance: {current_distance}")
+                logging.info(f"Stage counter: {stage_counter}")
+                
+                if stage_counter >= 5:  # Only allow transition if the condition has been true for 5 consecutive frames
+                    distance_condition_for_transition = True
+                    stage_counter = 0
+                else:
+                    distance_condition_for_transition = False
 
-                    if debug:
-                        cv2.arrowedLine(
-                            frame,
-                            (int(old_x), int(old_y)),
-                            (int(new_x), int(new_y)),
-                            (0, 255, 0),
-                            2,
-                            tipLength=0.5
-                        )
-                keypoints_over_time.append(keypoint_motion)
-                keypoint_motion = {}
-                previous_keypoints = p1
-            else:
-                previous_keypoints = np.array([[kp.x * frame.shape[1], kp.y * frame.shape[0]] for kp in keypoints.values()], dtype=np.float32).reshape(-1, 1, 2)
-            previous_gray = current_gray
-            logging.info(f"--- End of Optical Flow ---")
+                logging.info(f"Condition for transition (Walk to -> Turn): {distance_condition_for_transition}")
 
+                # stage_counter +=1
+                # if stage_counter >= confirm_frames:
+                #     distance_condition_for_transition = walk_to_previous_distance > current_distance
+                #     stage_counter = 0
+                
+                if (walk_to_start_frame != -1 and walk_to_end_frame == -1 and distance_condition_for_transition):
+                    if walk_back_start_position is None:
+                        walk_back_start_position = central_point
+                    walk_to_end_frame = current_frame_id # End of walk_to_phase
+                    turn_start_frame = current_frame_id # Start of turn_phase
+                    returned_current_phase = begin_phase(Phase.WALK_TO,Phase.TURN)
+                    current_phase = returned_current_phase
+                    logging.info(f"Walk to phase completed at frame: {walk_to_end_frame}, Turn phase started at frame: {turn_start_frame}")
+                walk_to_previous_distance = current_distance
+                logging.info(f"------")
 
-            logging.info(f"--- Foot & Stride Information ---")
-            if initial_foot_slope == 0:
-                initial_foot_slope = calculate_foot_slope(keypoints["RIGHT_ANKLE"], keypoints["RIGHT_TOE"])
-                right_slope = initial_foot_slope
-                logging.info(f"Initial foot slope: {initial_foot_slope}")
-            else:
-                right_slope = calculate_foot_slope(keypoints["RIGHT_ANKLE"], keypoints["RIGHT_TOE"])
-                logging.info(f"Right foot slope: {right_slope}")
-
-            # Detect foot contact with the ground
-            if abs(right_slope) < initial_foot_slope:
-                logging.info(f"Right foot is parallel to the ground")
-                if not foot_contact_start and not reset_needed:
-                    # First ground contact
-                    foot_contact_start = True
-                    foot_off_ground = False
-                    initial_contact_position = keypoints["RIGHT_TOE"]
-                    logging.info("First ground contact detected")
-
-                elif foot_off_ground and reset_needed:
-                    # Second ground contact, calculate stride
-                    final_contact_position = keypoints["RIGHT_TOE"]
-                    stride_length = (
-                        calculate_horizontal_distance(
-                            final_contact_position, initial_contact_position, frame.shape[1]
-                        )
-                        / pixels_to_cm_ratio
-                    )
-                    strides.append(stride_length)
-                    logging.info(f"Stride length recorded: {stride_length} cm")
-
-                    # Reset flags for the next stride detection
-                    reset_needed = False
-                    foot_contact_start = False
-                    foot_off_ground = False
-                    initial_contact_position = keypoints["RIGHT_TOE"]
-            else:
-                # Foot off ground
-                if foot_contact_start and not reset_needed:
-                    foot_off_ground = True
-                    logging.info("Foot is off the ground")
-
-                    # Allow reset to detect the next stride
-                    reset_needed = True
-            logging.info(f"--- End of Foot & Stride Information ---")
-            if debug:
-                cv2.putText(
-                    frame,
-                    f"Right foot slope: {right_slope}",
-                    (10, 90),
-                    cv2.FONT_HERSHEY_SIMPLEX,
-                    1,
-                    (255, 255, 0),
-                    2,
-                    cv2.LINE_AA,
-                )
-                cv2.putText(
-                    frame,
-                    f"Foot touching ground: {'YES' if foot_contact_start and abs(right_slope) < 0.9 else 'NO'}",
-                    (10, 120),
-                    cv2.FONT_HERSHEY_SIMPLEX,
-                    1,
-                    (255, 255, 0),  # Yellow text for stride count
-                    2,
-                    cv2.LINE_AA,
-                )
+            
+            # Turn Phase processing
+            if current_phase == Phase.TURN and timer_started:
+                logging.info(f"---Expected Phase: Turn - Actual: {current_phase}---")
+                # Transition from TURN to WALK_BACK
+                if turn_start_frame != -1 and turn_end_frame == -1:
+                    stage_counter += 1
+                    if stage_counter >= confirm_frames:
+                        logging.info(f"Stage is confirmed. Transitioning to walk back stage")
+                        stage_counter = 0
+                        turn_end_frame = current_frame_id
+                        returned_current_phase= begin_phase(Phase.TURN, Phase.WALK_BACK)
+                        current_phase = returned_current_phase
+                        logging.info(f"Turn phase completed at frame: {turn_end_frame}")
+                logging.info(f"------")
+                
+            # Walk Back Phase processing
+            if current_phase == Phase.WALK_BACK and timer_started:
+                logging.info(f"---Expected Phase: Walk Back - Actual: {current_phase}---")
+                if walk_back_start_frame == -1:
+                    walk_back_start_frame = current_frame_id
+                    logging.info(f"Walk back phase started at frame: {walk_back_start_frame}")
+                logging.info(f"WALK_BACK distance: {distance_walked}")
+                logging.info(f"------")
+                if sit_stand_stage == 1 and knee_angle < down_stage_threshold_angle:
+                    walk_back_end_frame = current_frame_id
+                    logging.info(f"Walk back phase completed at frame: {walk_back_end_frame}")
+                    sit_start_frame = current_frame_id
+                    logging.info(f"Sit phase started at frame: {sit_start_frame}")
+                    stage_counter += 1
+                    if stage_counter >= confirm_frames:
+                        logging.info(f"Stage is confirmed. Transitioning to down stage")
+                        sit_stand_stage = 0
+                        stage_counter = 0
+                        returned_current_phase = begin_phase(Phase.WALK_BACK,Phase.SIT)
+                        current_phase = returned_current_phase
+                logging.info("------")
+            
+            # Sit Phase processing
+            if current_phase == Phase.SIT and timer_started:
+                logging.info(f"---Expected Phase: Sit - Actual: {current_phase}---")
+                logging.info(f"Timer stopped at frame - Begin Post Processing : {sit_start_frame}, End frame: {end_frame_id}")
+                logging.info(f"---END OF TEST---")
+                sit_end_frame = current_frame_id
+                end_frame_id = sit_end_frame
+                logging.info(f"Processing Completed at frame: {end_frame_id}")
+                timer_started = False
+                break
         if debug:
             # Display the frame
             cv2.imshow("Frame", frame)
             if cv2.waitKey(5) & 0xFF == 27:
                 logging.info("Process interrupted by user")
                 break
-
+        # Trigger to start the timer
     cap.release()
     cv2.destroyAllWindows()
 

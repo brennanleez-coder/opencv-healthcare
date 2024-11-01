@@ -6,11 +6,11 @@ import threading
 import uuid
 import os
 from app.utils.logger import Logger
-import app.routers.sit_stand_overall as sso
-import app.routers.gait_speed_walk_overall as gswo
+from . import sit_stand_overall as sso
+from . import gait_speed_walk_overall as gswo
+import app.routers.tug_overall as tugo
 import app.helpers.data_engineering as de
 from typing import Optional
-import pandas as pd
 
 
 router = APIRouter()
@@ -18,18 +18,17 @@ logger_instance = Logger()
 logger = logger_instance.get_logger()
 
 
-result_queues = {} # {request_id: {"queue": Queue, "algo": "Gait Speed Walk"}}
+result_queues = {}  # {request_id: {"queue": Queue, "algo": "Gait Speed Walk"}}
 
 
 def thread_function(video_path, algo, queue, logger, **kwargs):
     try:
-        if algo == "Gait Speed Walk":
+        if algo == "Gait Speed Walk Test":
             result = gswo.process_test(video_path, **kwargs)
         elif algo == "5 Sit Stand":
             result = sso.process_sit_stand(video_path, **kwargs)
-        # Add more algorithms here
-        # elif algo == "another_algorithm":
-        #     result = another_algo.process(video_path, **kwargs)
+        elif algo == "Timed Up and Go":
+            result = tugo.process_tug(video_path, **kwargs)
         queue.put(result)
     except Exception as e:
         logger.error(f"Error processing video: {e}")
@@ -62,23 +61,32 @@ async def video_processing(
     background_tasks: BackgroundTasks,
     file: UploadFile = File(...),
     algo: str = Form(...),
-    height: Optional[float] = Form(None),
+    standingHeight: Optional[float] = Form(None),
+    sittingHeight: Optional[float] = Form(None),
     distance: Optional[float] = Form(None),
 ):
     request_id = str(uuid.uuid4())
     file_content = await file.read()
 
     result_queue = Queue()
-    result_queues[request_id] = {"queue":result_queue, "algo": algo}
+    result_queues[request_id] = {"queue": result_queue, "algo": algo}
 
-    # Prepare kwargs based on the algorithm
+    print(f"Input Sanity Check: {algo}, {standingHeight}, {sittingHeight}, {distance}")
     kwargs = {}
-    if algo == "Gait Speed Walk Test":
-        kwargs = {"height": height, "distance": distance, "debug": False} #STUB
+    if algo == "Timed Up and Go":
+        kwargs = {
+            "sit_down_height_in_cm": sittingHeight,
+            "distance_required_in_cm": distance,
+            "debug": False,
+        }  # STUB
     elif algo == "5 Sit Stand":
         kwargs = {"display": False}
-    elif algo == "Timed Up and Go":
-        kwargs = {"display": False} #STUB
+    elif algo == "Gait Speed Walk Test":
+        kwargs = {
+            "person_height_in_cm": standingHeight,
+            "distance_required_in_cm": distance,
+            "debug": False,
+        }  # STUB
     else:
         return JSONResponse(
             status_code=400, content={"message": "Invalid algorithm specified"}
@@ -136,41 +144,60 @@ async def video_result(request_id: str):
     if algo == "5 Sit Stand":
         response = process_sit_stand_response(result)
     elif algo == "Gait Speed Walk Test":
-        # STUB
-        response = {"message": "Gait Speed Walk Test result"}
-    elif algo == "Timed Up and Go": 
-        # STUB
-        response = {"message": "Timed Up and Go result"}
+        response = process_gswt_response(result)
+
+    elif algo == "Timed Up and Go":
+        
+        response = process_tug_response(result)
     else:
         return JSONResponse(
             status_code=400, content={"message": "Invalid algorithm specified"}
         )
-        
-    return JSONResponse(
-        status_code=200,
-        content=response
-    )
+
+    return JSONResponse(status_code=200, content=response)
+
 
 def process_sit_stand_response(result):
-    type, pass_fail, counter, elapsed_time, rep_durations, violations, max_angles, keypoint_mean_magnitudes, keypoint_std_devs, keypoint_circular_mean, keypoint_circular_std= (
-            result
-        )
-
+    (
+        type,
+        pass_fail,
+        counter,
+        elapsed_time,
+        rep_durations,
+        violations,
+        max_angles,
+        keypoint_mean_magnitudes,
+        keypoint_std_devs,
+        keypoint_circular_mean,
+        keypoint_circular_std,
+    ) = result
+    logger.info(f"Type: {type}")
     logger.info(f"Counter: {counter}")
     logger.info(f"Rep durations: {rep_durations}")
     logger.info(f"Violations: {violations}")
     logger.info(f"Max angles: {max_angles}")
     logger.info(f"Elapsed time: {elapsed_time}")
-    logger.info(f"Type: {type}")
     logger.info(f"Pass/Fail: {pass_fail}")
     logger.info(f"Keypoint mean magnitudes: {keypoint_mean_magnitudes}")
     logger.info(f"Keypoint std devs: {keypoint_std_devs}")
     logger.info(f"Keypoint circular mean: {keypoint_circular_mean}")
     logger.info(f"Keypoint circular std: {keypoint_circular_std}")
-    
-    frailty_score = de.sit_stand_helper(type, pass_fail, counter, elapsed_time, rep_durations, violations, max_angles, keypoint_mean_magnitudes, keypoint_std_devs, keypoint_circular_mean, keypoint_circular_std)
+
+    frailty_score = de.sit_stand_helper(
+        type,
+        pass_fail,
+        counter,
+        elapsed_time,
+        rep_durations,
+        violations,
+        max_angles,
+        keypoint_mean_magnitudes,
+        keypoint_std_devs,
+        keypoint_circular_mean,
+        keypoint_circular_std,
+    )
     logger.info(f"Frailty Score: {frailty_score[0]}")
-    
+
     response = {
         "type": type,
         "pass_fail": pass_fail,  # "pass" or "fail
@@ -183,6 +210,110 @@ def process_sit_stand_response(result):
         "keypoint_std_devs": keypoint_std_devs,
         "keypoint_circular_mean": keypoint_circular_mean,
         "keypoint_circular_std": keypoint_circular_std,
-        "frailty_score": frailty_score[0]
+        "frailty_score": frailty_score[0],
+    }
+    return response
+
+
+def process_gswt_response(result):
+    (
+        type,
+        distance_walked,
+        elapsed_time,
+        average_speed,
+        average_stride_length,
+        keypoint_mean_magnitudes,
+        keypoint_std_devs,
+        keypoint_circular_mean,
+        keypoint_circular_std,
+    ) = result
+    logger.info(f"Type: {type}")
+    logger.info(f"Distance Walked: {distance_walked}")
+    logger.info(f"Elapsed time: {elapsed_time}")
+    logger.info(f"Average Speed: {average_speed}")
+    logger.info(f"Average Stride Length: {average_stride_length}")
+    logger.info(f"Keypoint mean magnitudes: {keypoint_mean_magnitudes}")
+    logger.info(f"Keypoint std devs: {keypoint_std_devs}")
+    logger.info(f"Keypoint circular mean: {keypoint_circular_mean}")
+    logger.info(f"Keypoint circular std: {keypoint_circular_std}")
+
+    frailty_score = de.gait_speed_walk_test_helper(
+        type,
+        distance_walked,
+        elapsed_time,
+        average_speed,
+        average_stride_length,
+        keypoint_mean_magnitudes,
+        keypoint_std_devs,
+        keypoint_circular_mean,
+        keypoint_circular_std,
+    )
+    logger.info(f"Frailty Score: {frailty_score[0]}")
+
+    response = {
+        "type": type,
+        "distance_walked": distance_walked,
+        "elapsed_time": elapsed_time,
+        "average_speed": average_speed,
+        "average_stride_length": average_stride_length,
+        "keypoint_mean_magnitudes": keypoint_mean_magnitudes,
+        "keypoint_std_devs": keypoint_std_devs,
+        "keypoint_circular_mean": keypoint_circular_mean,
+        "keypoint_circular_std": keypoint_circular_std,
+        "frailty_score": frailty_score[0],
+    }
+    return response
+
+
+def process_tug_response(result):
+    (
+        type,
+        distance_walked,
+        elapsed_time,
+        segment_times,
+        average_speed,
+        average_stride_length,
+        keypoint_mean_magnitudes,
+        keypoint_std_devs,
+        keypoint_circular_mean,
+        keypoint_circular_std,
+    ) = result
+    logger.info(f"Type: {type}")
+    logger.info(f"Distance Walked: {distance_walked}")
+    logger.info(f"Elapsed time: {elapsed_time}")
+    logger.info(f"Segment times: {segment_times}")
+    logger.info(f"Average Speed: {average_speed}")
+    logger.info(f"Average Stride Length: {average_stride_length}")
+    logger.info(f"Keypoint mean magnitudes: {keypoint_mean_magnitudes}")
+    logger.info(f"Keypoint std devs: {keypoint_std_devs}")
+    logger.info(f"Keypoint circular mean: {keypoint_circular_mean}")
+    logger.info(f"Keypoint circular std: {keypoint_circular_std}")
+    
+    frailty_score = de.tug_helper(
+        type,
+        distance_walked,
+        elapsed_time,
+        segment_times,
+        average_speed,
+        average_stride_length,
+        keypoint_mean_magnitudes,
+        keypoint_std_devs,
+        keypoint_circular_mean,
+        keypoint_circular_std,
+    )
+    
+
+    response = {
+        "type": type,
+        "distance_walked": distance_walked,
+        "elapsed_time": elapsed_time,
+        "segment_times": segment_times,
+        "average_speed": average_speed,
+        "average_stride_length": average_stride_length,
+        "keypoint_mean_magnitudes": keypoint_mean_magnitudes,
+        "keypoint_std_devs": keypoint_std_devs,
+        "keypoint_circular_mean": keypoint_circular_mean,
+        "keypoint_circular_std": keypoint_circular_std,
+        "frailty_score": frailty_score[0],
     }
     return response

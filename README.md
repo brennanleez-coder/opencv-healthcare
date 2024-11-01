@@ -1,22 +1,14 @@
 
 # Opencv-healthcare
-Algorithms to digitize Healthcare use-cases (Chair Sit-Stand, Gait Speed Walk Test, Timed Up and Go) for frailty. The eventual deployment of these algorithms will be through a cross-platform mobile application.
+Algorithms to digitize Healthcare use-cases (Chair Sit-Stand, Gait Speed Walk Test, Timed Up and Go) for frailty
+
 ## Tech Stack:
-
 CV Functionality:
-- Algorithms written in Python and C++17
-- Opencv
+- OpenCV
 - MediaPipe for Pose estimation
-- Cython
-
-
-Build tools:
-- Cmake
 
 Virtual Environment:
 - Running Python3.11
-
-
 
 ## File Directory
 
@@ -27,15 +19,13 @@ Virtual Environment:
 
 **sit_stand_algorithm/:** Contains specific algorithms or modules related to sit-stand exercises.
 
-**src/:** Contains C++ that is used to call the CV algorithms written in Python.
+**src/:** Contains C++ files that is used to call the CV algorithms written in Python.
 
 **CMakeLists.txt:** The CMake configuration file used for generating build files and managing the build process.
 
 **requirements.txt:** List of python dependencies used and versions
 
 ## Run Locally
-Prerequisites:
-- Python 3.11 installed
 
 #### Clone repository
 ```bash
@@ -60,7 +50,7 @@ This command downloads all required python3 libraries including opencv and media
     pip install -r requirements.txt
 ```
 
-#### Install git submodules (Pybind11)
+#### Install git submodules (Pybind11) (Optional, if calling from C++ environment)
 Pybind11 is used to call python files from a C++ environment
 ```
     git submodule update --init --recursive
@@ -82,35 +72,14 @@ From the root directory
 [Test Videos](https://drive.google.com/drive/folders/1508TJTl65lPUibJI231O73kkHrnH0uiE?usp=sharing)
 Place them into the test/ directory
 
-#### Run CV Algorithms from C++ main executable
-Run the main executable from build directory
-```bash
-    ./main
-``` 
+
 ### Development Process
 
-The development process for this project involves several key steps, starting with the development and testing of computer vision algorithms in Jupyter Notebook and transitioning to an integrated C++ and Python environment. Below are the detailed steps to follow:
-
 #### 1. Develop and Test Algorithms in Jupyter Notebook
+-Begin by developing and testing the computer vision (CV) algorithms in Jupyter Notebook. This allows for an interactive environment where you can quickly iterate and visualize the results.
 
-- Begin by developing and testing the computer vision (CV) algorithms in Jupyter Notebook. This allows for an interactive environment where you can quickly iterate and visualize the results.
+#### 2. Convert to Cython
 
-#### 2. Convert Notebook to Python Script
-
-- Once the algorithm works as expected in the notebook, convert the Jupyter Notebook to a Python script. This can be done using the following command:
-```bash
-    jupyter nbconvert --to script example_notebook.ipynb
-```
-
-#### 3. Refactor Single python script
-- Refactor the generated Python script to follow Object-Oriented Programming (OOP) principles. 
-This refactoring helps in organizing the code better and makes it easier to integrate with other components of the project.
-Structuring the code in an OOP manner will facilitate navigation and usage of Python directories from the C++ side programmatically.
-
-
-
-#### Updated workflow:
-Converting code to cython
 - Cython is a superset of Python that allows for the writing of C extensions for Python. It is used to speed up Python code by converting it to C code.
 - To convert Python code to Cython, create a .pyx file and write the code in Cython syntax. Then, create a setup.py file to compile the Cython code into a shared library.
 - To compile the Cython code and move the shared library to the Python path, run the following command:
@@ -119,81 +88,39 @@ Converting code to cython
 ```
 Check that there are no errors, warnings are fine.
 A build_output.log file will be generated in the Cython_algorithms directory. This file contains the output of the compilation process and can be used to debug any issues that arise during the compilation process.
-
-Errors that are fine:
-    PyErr_SetString(PyExc_ZeroDivisionError, "float division");
-Would appreciate any help to fix this error. On second run of compile_and_move.sh, the error disappears.
-
-
-In the setup file:
-1. include the full path to the Python.h file in the include_dirs list.
-2. include the full path to the .pyx file in the ext_modules list.
-This is necessary for the Cython code to compile successfully.
-
-Extra links:
-https://github.com/openvinotoolkit/open_model_zoo/blob/master/demos/human_pose_estimation_demo/cpp/README.md
-
-Client Server approach:
-server/ contains fastapi app
+#### Deploy Algorithms in FastAPI
+server/ contains the fastapi app
 
 use the following command to run the server locally:
 ```bash
-    fastapi dev server/app/main
+    cd server
+    fastapi dev
 ```
+
 Build fastapi app as docker image
 ```bash
-docker build -t empower-vision-be -f Dockerfile .
+    docker build -t image-name -f Dockerfile .
 ```
 Run the docker image
 ```bash
-docker run -d --name empower-vision-be-container -p 80:80 empower-vision-be
+    docker run -d --name container-name -p 80:80 image-name
 ```
 
-useful docker commands:
-remove and stop all containers
-```bash
-docker stop $(docker ps -q) && docker rm $(docker ps -a -q)
-```
-
-Compiling for linux so file
-I am using a mac environment so the .so file generated is for darwin. This causes issues when running the .so file in the docker container.
-
-JUST USE THIS COMMAND
-CC=x86_64-linux-musl-gcc python3 setup.py build_ext --inplace
-
+#### Compiling for Linux
 To compile for linux, I created another docker container just to compile and then copy the .so file locally. Then move it to my fastapi app
     
 ```bash
-    docker build --no-cache -t cython_linux_build .
-    docker run -d --name cython_linux_build_container -p 80:80 cython_linux_build
+    docker build cython-app . 
+    docker run -d cython-app
+```
+Check if the file is inside
+```bash
+    docker exec -it <CONTAINER_ID> /bin/bash
 ```
 Enter the container
 ```bash
-    docker exec -it cython_linux_build_container /bin/bash
+    docker cp CONTAINER_ID:app/File .          
 ```
 Once the sit_stand_overall.cpython-310-x86_64-linux-gnu.so is created, move it to the fastapi app
     
-```bash
-    cp /usr/src/app/sit_stand_algorithm.cpython-310-darwin.so /usr/src/app/server/app/sit_stand_algorithm.cpython-310-linux-x86_64.so
-```
     
-```bash
-    exit
-```    
-```bash
-    docker cp empower-vision-be-container:/usr/src/app/server/app/sit_stand_algorithm.cpython-310-linux-x86_64.so .
-```
-
-```bash
-    docker stop empower-vision-be-container
-```
-
-```bash
-    docker rm empower-vision-be-container
-```
-
-```bash
-    docker rmi empower-vision-be
-```
-    
-
