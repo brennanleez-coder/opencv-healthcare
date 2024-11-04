@@ -1,6 +1,6 @@
 
 # Opencv-healthcare
-Algorithms to digitize Healthcare use-cases (Chair Sit-Stand, Gait Speed Walk Test, Timed Up and Go) for frailty
+Algorithms to digitize Healthcare tests (Chair Sit-Stand, Gait Speed Walk Test, Timed Up and Go) for frailty
 
 ## Tech Stack:
 CV Functionality:
@@ -19,7 +19,7 @@ Virtual Environment:
 
 **sit_stand_algorithm/:** Contains specific algorithms or modules related to sit-stand exercises.
 
-**src/:** Contains C++ files that is used to call the CV algorithms written in Python.
+**src/:** Contains C++ files that is used to call the CV algorithms written in Python. This process is no longer in use.
 
 **CMakeLists.txt:** The CMake configuration file used for generating build files and managing the build process.
 
@@ -50,7 +50,7 @@ This command downloads all required python3 libraries including opencv and media
     pip install -r requirements.txt
 ```
 
-#### Install git submodules (Pybind11) (Optional, if calling from C++ environment)
+#### Install git submodules (Pybind11) (Optional, if calling from C++ environment). This is no longer in use.
 Pybind11 is used to call python files from a C++ environment
 ```
     git submodule update --init --recursive
@@ -58,7 +58,7 @@ Pybind11 is used to call python files from a C++ environment
 Ensure external/pybind11 folder is created with contents
 
 
-#### Generate executable with Cmake
+#### Generate executable with Cmake (Optional, if calling from C++ environment). This is no longer in use.
 From the root directory
 ```bash
     mkdir -p build && cd build
@@ -79,7 +79,6 @@ Place them into the test/ directory
 -Begin by developing and testing the computer vision (CV) algorithms in Jupyter Notebook. This allows for an interactive environment where you can quickly iterate and visualize the results.
 
 #### 2. Convert to Cython
-
 - Cython is a superset of Python that allows for the writing of C extensions for Python. It is used to speed up Python code by converting it to C code.
 - To convert Python code to Cython, create a .pyx file and write the code in Cython syntax. Then, create a setup.py file to compile the Cython code into a shared library.
 - To compile the Cython code and move the shared library to the Python path, run the following command:
@@ -88,6 +87,7 @@ Place them into the test/ directory
 ```
 Check that there are no errors, warnings are fine.
 A build_output.log file will be generated in the Cython_algorithms directory. This file contains the output of the compilation process and can be used to debug any issues that arise during the compilation process.
+
 #### Deploy Algorithms in FastAPI
 server/ contains the fastapi app
 
@@ -107,7 +107,8 @@ Run the docker image
 ```
 
 #### Compiling for Linux
-To compile for linux, I created another docker container just to compile and then copy the .so file locally. Then move it to my fastapi app
+To compile for linux, I created another docker container just to compile and then copy the .so file locally. Then move it to my fastapi app.
+If not done properly, the .so file will not work on the fastapi app that is running inside the docker container.
     
 ```bash
     docker build cython-app . 
